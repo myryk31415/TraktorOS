@@ -606,3 +606,29 @@ body {
         transform: translateY(0);
     }
 }
+
+.quality-banner {
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.quality-banner.quality-good {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #86efac;
+}
+.quality-banner.quality-warn {
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    color: #fde047;
+}
+.quality-banner .quality-details {
+    font-weight: 400;
+    font-size: 0.8rem;
+    opacity: 0.85;
+}

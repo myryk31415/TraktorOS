@@ -102,6 +102,47 @@ def detect_bedrock():
     return jsonify(result)
 
 
+import cv2
+import numpy as np
+
+
+@app.route('/quality', methods=['POST'])
+def quality():
+    data = request.get_json()
+    image_data = base64.b64decode(data['image'])
+    arr = np.frombuffer(image_data, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    h, w = gray.shape
+
+    blur = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    brightness = float(gray.mean())
+    contrast = float(gray.std())
+
+    issues = []
+    if blur < 100:
+        issues.append('blurry')
+    if brightness < 40:
+        issues.append('too dark')
+    elif brightness > 220:
+        issues.append('overexposed')
+    if contrast < 20:
+        issues.append('low contrast')
+    if w < 320 or h < 240:
+        issues.append('low resolution')
+
+    return jsonify({
+        'sufficient': len(issues) == 0,
+        'issues': issues,
+        'metrics': {
+            'blur': round(blur, 1),
+            'brightness': round(brightness, 1),
+            'contrast': round(contrast, 1),
+            'resolution': f'{w}x{h}'
+        }
+    })
+
+
 OLLAMA_URL = 'http://localhost:11434/api/chat'
 OLLAMA_MODEL = 'moondream'
 

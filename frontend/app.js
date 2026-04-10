@@ -2,7 +2,8 @@ const ENDPOINTS = {
     local: 'http://localhost:5000/detect',
     sagemaker: 'YOUR_API_GATEWAY_URL',
     bedrock: 'http://localhost:5000/detect-bedrock',
-    localLlm: 'http://localhost:5000/detect-local-llm'
+    localLlm: 'http://localhost:5000/detect-local-llm',
+    quality: 'http://localhost:5000/quality'
 };
 
 const imageInput = document.getElementById('imageInput');
@@ -91,17 +92,37 @@ uploadBtn.addEventListener('click', async () => {
 
     try {
         const mode = document.querySelector('input[name="mode"]:checked').value;
-        const response = await fetch(ENDPOINTS[mode], {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                image: selectedImageDataUrl.split(',')[1]
-            })
-        });
+        const imagePayload = JSON.stringify({ image: selectedImageDataUrl.split(',')[1] });
 
-        const result = await response.json();
+        // Run detection and quality check in parallel
+        const [detectionRes, qualityRes] = await Promise.all([
+            fetch(ENDPOINTS[mode], {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: imagePayload
+            }),
+            fetch(ENDPOINTS.quality, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: imagePayload
+            }).catch(() => null)
+        ]);
+
+        const result = await detectionRes.json();
+
+        // Show quality banner
+        const qualityBanner = document.getElementById('qualityBanner');
+        if (qualityRes) {
+            const q = await qualityRes.json();
+            qualityBanner.classList.remove('d-none', 'quality-good', 'quality-warn');
+            if (q.sufficient) {
+                qualityBanner.classList.add('quality-good');
+                qualityBanner.innerHTML = '✓ Image quality OK <span class="quality-details">blur=' + q.metrics.blur + ' bright=' + q.metrics.brightness + ' contrast=' + q.metrics.contrast + '</span>';
+            } else {
+                qualityBanner.classList.add('quality-warn');
+                qualityBanner.innerHTML = '⚠ ' + q.issues.join(', ') + ' <span class="quality-details">blur=' + q.metrics.blur + ' bright=' + q.metrics.brightness + ' contrast=' + q.metrics.contrast + '</span>';
+            }
+        }
 
         displayResults(selectedImageDataUrl, result.detections || []);
         if (statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
@@ -318,6 +339,8 @@ function resetProcessedState() {
     processedSpinner.classList.add('is-hidden');
     detectionInfo.innerHTML = '';
     ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+    const qb = document.getElementById('qualityBanner');
+    if (qb) qb.classList.add('d-none');
 }
 
 function setProcessingState(isProcessing) {
