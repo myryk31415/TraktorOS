@@ -102,5 +102,30 @@ def detect_bedrock():
     return jsonify(result)
 
 
+OLLAMA_URL = 'http://localhost:11434/api/chat'
+OLLAMA_MODEL = 'moondream'
+
+
+@app.route('/detect-local-llm', methods=['POST'])
+def detect_local_llm():
+    data = request.get_json()
+    image_b64 = data['image']
+
+    import requests as http_requests
+    response = http_requests.post(OLLAMA_URL, json={
+        'model': OLLAMA_MODEL,
+        'messages': [{'role': 'user', 'content': BEDROCK_PROMPT, 'images': [image_b64]}],
+        'format': 'json',
+        'stream': False
+    })
+
+    text = response.json()['message']['content']
+    if '```' in text:
+        text = text.split('```')[1].removeprefix('json').strip()
+    result = json.loads(text)
+
+    return jsonify(result)
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

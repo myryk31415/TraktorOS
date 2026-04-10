@@ -1,7 +1,8 @@
 const ENDPOINTS = {
     local: 'http://localhost:5000/detect',
     sagemaker: 'YOUR_API_GATEWAY_URL',
-    bedrock: 'http://localhost:5000/detect-bedrock'
+    bedrock: 'http://localhost:5000/detect-bedrock',
+    localLlm: 'http://localhost:5000/detect-local-llm'
 };
 
 const imageInput = document.getElementById('imageInput');
@@ -22,6 +23,7 @@ let selectedImageDataUrl = null;
 let previewObjectUrl = null;
 
 const bedrockBtn = document.getElementById('bedrockBtn');
+const localLlmBtn = document.getElementById('localLlmBtn');
 const bedrockStatus = document.getElementById('bedrockStatus');
 const bedrockSpinner = document.getElementById('bedrockSpinner');
 const bedrockEmpty = document.getElementById('bedrockEmpty');
@@ -39,6 +41,7 @@ imageInput.addEventListener('change', async (e) => {
         selectedImageDataUrl = null;
         uploadBtn.disabled = true;
         bedrockBtn.disabled = true;
+        localLlmBtn.disabled = true;
         resetSelectedPreview();
         resetProcessedState();
         return;
@@ -47,6 +50,7 @@ imageInput.addEventListener('change', async (e) => {
     selectedImage = file;
     uploadBtn.disabled = false;
     bedrockBtn.disabled = false;
+    localLlmBtn.disabled = false;
 
     if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
@@ -96,17 +100,18 @@ uploadBtn.addEventListener('click', async () => {
     }
 });
 
-bedrockBtn.addEventListener('click', async () => {
+async function runAnalysis(endpoint) {
     if (!selectedImageDataUrl) return;
 
     bedrockBtn.disabled = true;
+    localLlmBtn.disabled = true;
     bedrockEmpty.classList.add('d-none');
     bedrockResults.classList.add('d-none');
     bedrockSpinner.classList.remove('d-none');
     bedrockStatus.textContent = 'Processing';
 
     try {
-        const response = await fetch(ENDPOINTS.bedrock, {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: selectedImageDataUrl.split(',')[1] })
@@ -149,16 +154,20 @@ bedrockBtn.addEventListener('click', async () => {
 
         bedrockSpinner.classList.add('d-none');
         bedrockResults.classList.remove('d-none');
-        bedrockStatus.textContent = `${(result.detections || []).length} detected`;
+        bedrockStatus.textContent = `${(result.obstacles || []).length} obstacles`;
     } catch (error) {
-        console.error('Bedrock error:', error);
+        console.error('Analysis error:', error);
         bedrockSpinner.classList.add('d-none');
         bedrockEmpty.classList.remove('d-none');
         bedrockStatus.textContent = 'Error';
     } finally {
         bedrockBtn.disabled = !selectedImage;
+        localLlmBtn.disabled = !selectedImage;
     }
-});
+}
+
+bedrockBtn.addEventListener('click', () => runAnalysis(ENDPOINTS.bedrock));
+localLlmBtn.addEventListener('click', () => runAnalysis(ENDPOINTS.localLlm));
 
 function resetSelectedPreview() {
     if (previewObjectUrl) {
