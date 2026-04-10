@@ -13,10 +13,19 @@ from torchvision.models.detection import (
 
 from coco_dataset import CocoDetectionDataset
 
+import boto3
+
+BUCKET_NAME = "traktoros-training-data"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Evaluate pretrained Faster R-CNN (COCO) on COCO-style annotations."
+    )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        default=False,
+        help="Specify, if local dataset should be used.",
     )
     parser.add_argument(
         "--dataset-root",
@@ -60,7 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-images",
         type=int,
-        default=50,
+        default=200,
         help="Optional cap for quick evaluation runs.",
     )
     parser.add_argument(
@@ -210,7 +219,7 @@ def evaluate(
 
     with torch.no_grad():
         for annotation_file in annotation_files:
-            dataset = CocoDetectionDataset(annotation_file=annotation_file, image_root=image_root)
+            dataset = CocoDetectionDataset(annotation_file=annotation_file, image_root=image_root, is_local=False)
 
             for image_index, (image_tensor, target) in enumerate(dataset):
                 if max_images is not None and total_images >= max_images:
@@ -243,7 +252,7 @@ def evaluate(
                     image_info = dataset._images[image_index]
                     image_title = f"image_id={int(image_info['id'])} fp={fp} tp={tp} fn={fn}"
                     output_path = fail_dir / (
-                        f"{annotation_file.stem}_img{int(image_info['id'])}_"
+                        f"{Path(annotation_file).stem}_img{int(image_info['id'])}_"
                         f"idx{total_images}_fp{fp}_fn{fn}.png"
                     )
                     visualize_detections(
@@ -279,18 +288,38 @@ def evaluate(
         "mean_iou": mean_iou,
     }
 
+def get_all_s3_keys(prefix):
+    s3 = boto3.client('s3')
+    keys = []
+    
+    # Paginator erstellen, um das 1000-Limit zu umgehen
+    paginator = s3.get_paginator('list_objects_v2')
+    
+    # Rekursives Durchlaufen durch Angabe des Prefix
+    for page in paginator.paginate(Bucket=BUCKET_NAME, Prefix=prefix):
+        if 'Contents' in page:
+            for obj in page['Contents']:
+                keys.append(obj['Key'])
+                
+    return keys
 
 def main() -> None:
     args = parse_args()
 
-    dataset_root = args.dataset_root
-    annotation_root = args.annotation_root or (dataset_root / "annotation")
-    image_root = args.image_root or (dataset_root / "data")
+    if args.local:
+        dataset_root = args.dataset_root
+        annotation_root = args.annotation_root or (dataset_root / "annotation")
+        image_root = args.image_root or (dataset_root / "data")
 
-    annotation_files = validate_inputs(
-        annotation_root=annotation_root,
-        image_root=image_root,
-    )
+        annotation_files = validate_inputs(
+            annotation_root=annotation_root,
+            image_root=image_root,
+        )
+    else:
+        annotation_root = "data/HackHPI2026_release/annotation/"
+        image_root = "data/HackHPI2026_release/data/"
+
+        annotation_files = get_all_s3_keys(annotation_root)
 
     device = torch.device(
         "cpu" if args.cpu else ("cuda" if torch.cuda.is_available() else "cpu")
