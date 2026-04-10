@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 
 import torch
+from PIL import Image, ImageDraw
 from torchvision.models.detection import (
     FasterRCNN_ResNet50_FPN_Weights,
     fasterrcnn_resnet50_fpn,
@@ -59,13 +60,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-images",
         type=int,
-        default=20,
+        default=50,
         help="Optional cap for quick evaluation runs.",
     )
     parser.add_argument(
         "--cpu",
         action="store_true",
         help="Force CPU even if CUDA is available.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=True,
+        help="Show images with gt and predicted boxes whenever false positives occur.",
+    )
+    parser.add_argument(
+        "--fail-dir",
+        type=str,
+        default="artifacts/failure",
+        help=(
+            "Directory to save images with false positives/negatives when --verbose is set. "
+            "Images will be annotated with green (GT) and red (predicted) boxes."
+        ),
     )
     return parser.parse_args()
 
@@ -112,6 +128,33 @@ def box_iou_one_to_many(one_box: torch.Tensor, many_boxes: torch.Tensor) -> torc
     return inter_area / union.clamp(min=1e-6)
 
 
+def _box_to_tuple(box: torch.Tensor) -> tuple[float, float, float, float]:
+    return tuple(float(value) for value in box.tolist())
+
+
+def visualize_detections(
+    image_tensor: torch.Tensor,
+    gt_boxes: torch.Tensor,
+    pred_boxes: torch.Tensor,
+    image_title: str,
+    output_path: Path,
+) -> None:
+    image = Image.fromarray(
+        (image_tensor.detach().cpu().clamp(0, 1).mul(255).byte().permute(1, 2, 0).numpy())
+    )
+    draw = ImageDraw.Draw(image)
+
+    for gt_box in gt_boxes:
+        draw.rectangle(_box_to_tuple(gt_box), outline="lime", width=3)
+
+    for pred_box in pred_boxes:
+        draw.rectangle(_box_to_tuple(pred_box), outline="red", width=3)
+
+    draw.text((8, 8), image_title, fill="yellow")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path)
+
+
 def greedy_match(
     pred_boxes: torch.Tensor,
     gt_boxes: torch.Tensor,
@@ -143,17 +186,6 @@ def greedy_match(
     return tp, fp, fn, matched_ious
 
 
-def filter_ground_truth(
-    gt_boxes: torch.Tensor,
-    gt_labels: torch.Tensor,
-    person_category_id: int,
-) -> torch.Tensor:
-    if person_category_id < 0:
-        return gt_boxes
-    keep_mask = gt_labels == person_category_id
-    return gt_boxes[keep_mask]
-
-
 def evaluate(
     model: torch.nn.Module,
     annotation_files: list[Path],
@@ -163,7 +195,13 @@ def evaluate(
     iou_threshold: float,
     person_category_id: int,
     max_images: int | None,
+    verbose: bool,
+    fail_dir: str,
 ) -> dict[str, float | int]:
+    fail_dir = Path(fail_dir)
+    if verbose:
+        fail_dir.mkdir(parents=True, exist_ok=True)
+
     total_images = 0
     total_tp = 0
     total_fp = 0
@@ -174,7 +212,7 @@ def evaluate(
         for annotation_file in annotation_files:
             dataset = CocoDetectionDataset(annotation_file=annotation_file, image_root=image_root)
 
-            for image_tensor, target in dataset:
+            for image_index, (image_tensor, target) in enumerate(dataset):
                 if max_images is not None and total_images >= max_images:
                     break
 
@@ -200,6 +238,22 @@ def evaluate(
                 total_fp += fp
                 total_fn += fn
                 all_matched_ious.extend(matched_ious)
+
+                if verbose and (fp > 0 or fn > 0):
+                    image_info = dataset._images[image_index]
+                    image_title = f"image_id={int(image_info['id'])} fp={fp} tp={tp} fn={fn}"
+                    output_path = fail_dir / (
+                        f"{annotation_file.stem}_img{int(image_info['id'])}_"
+                        f"idx{total_images}_fp{fp}_fn{fn}.png"
+                    )
+                    visualize_detections(
+                        image_tensor=image_tensor,
+                        gt_boxes=gt_boxes,
+                        pred_boxes=filtered_pred_boxes,
+                        image_title=image_title,
+                        output_path=output_path,
+                    )
+
                 total_images += 1
 
             if max_images is not None and total_images >= max_images:
@@ -265,6 +319,8 @@ def main() -> None:
         iou_threshold=args.iou_threshold,
         person_category_id=args.person_category_id,
         max_images=args.max_images,
+        verbose=args.verbose,
+        fail_dir=args.fail_dir
     )
 
     print("\nEvaluation results")
