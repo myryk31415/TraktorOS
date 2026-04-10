@@ -14,8 +14,35 @@ from torchvision.transforms import functional as F
 app = Flask(__name__)
 CORS(app)
 
-# COCO class index 1 = person
-PERSON_CLASS = 1
+coco_core_agri_classes = {
+    # Humans (highest priority)
+    1: "person",
+
+    # Vehicles / moving hazards
+    2: "bicycle",
+    3: "car",
+    4: "motorcycle",
+    8: "truck",
+
+    # Large animals (real farm risk)
+    18: "dog",
+    19: "horse",
+    20: "sheep",
+    21: "cow",
+
+    # Small / fast unpredictable
+    16: "bird",
+
+    # Basic road interaction (edge of fields, crossings)
+    10: "traffic light",
+    13: "stop sign",
+
+    # Generic obstacles (proxies for "stuff in the way")
+    62: "chair",
+    64: "potted plant",
+    27: "backpack"
+}
+
 CONFIDENCE_THRESHOLD = 0.5
 
 print("Loading pretrained Faster R-CNN...")
@@ -38,10 +65,11 @@ def detect():
 
     detections = []
     for i in range(len(preds['boxes'])):
-        if preds['labels'][i].item() == PERSON_CLASS and preds['scores'][i].item() > CONFIDENCE_THRESHOLD:
+        if preds['labels'][i].item() in coco_core_agri_classes and preds['scores'][i].item() > CONFIDENCE_THRESHOLD:
             detections.append({
                 'bbox': [int(x) for x in preds['boxes'][i].tolist()],
-                'confidence': float(preds['scores'][i].item())
+                'confidence': float(preds['scores'][i].item()),
+                'class': coco_core_agri_classes[preds['labels'][i].item()]
             })
 
     return jsonify({
@@ -57,10 +85,10 @@ BEDROCK_PROMPT = """Analyze this image from an autonomous tractor's camera. Resp
 {
   "image_quality": {
     "sufficient_for_human_detection": true/false,
-    "issues": ["list of quality issues if any, e.g. too dark, blurry, overexposed"]
+    "issues": ["list of quality issues if any, e.g. too dark, blurry, overexposed, dust, lense flair. If it is good, just return sufficiant"]
   },
   "obstacles": [
-    {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk"}
+    {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk. Max 8 words."}
   ],
   "soil_assessment": {
     "condition": "dry/wet/muddy/frozen/waterlogged",
@@ -102,29 +130,45 @@ def detect_bedrock():
     return jsonify(result)
 
 
-OLLAMA_URL = 'http://localhost:11434/api/chat'
-OLLAMA_MODEL = 'moondream'
+import cv2
+import numpy as np
 
 
-@app.route('/detect-local-llm', methods=['POST'])
-def detect_local_llm():
+@app.route('/quality', methods=['POST'])
+def quality():
     data = request.get_json()
-    image_b64 = data['image']
+    image_data = base64.b64decode(data['image'])
+    arr = np.frombuffer(image_data, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    h, w = gray.shape
 
-    import requests as http_requests
-    response = http_requests.post(OLLAMA_URL, json={
-        'model': OLLAMA_MODEL,
-        'messages': [{'role': 'user', 'content': BEDROCK_PROMPT, 'images': [image_b64]}],
-        'format': 'json',
-        'stream': False
+    blur = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    brightness = float(gray.mean())
+    contrast = float(gray.std())
+
+    issues = []
+    if blur < 100:
+        issues.append('blurry')
+    if brightness < 40:
+        issues.append('too dark')
+    elif brightness > 220:
+        issues.append('overexposed')
+    if contrast < 20:
+        issues.append('low contrast')
+    if w < 320 or h < 240:
+        issues.append('low resolution')
+
+    return jsonify({
+        'sufficient': len(issues) == 0,
+        'issues': issues,
+        'metrics': {
+            'blur': round(blur, 1),
+            'brightness': round(brightness, 1),
+            'contrast': round(contrast, 1),
+            'resolution': f'{w}x{h}'
+        }
     })
-
-    text = response.json()['message']['content']
-    if '```' in text:
-        text = text.split('```')[1].removeprefix('json').strip()
-    result = json.loads(text)
-
-    return jsonify(result)
 
 
 if __name__ == '__main__':
