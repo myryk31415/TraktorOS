@@ -1,0 +1,8 @@
+# uv venv
+.venv/
+.python-version
+pyproject.toml
+uv.lock
+
+# dataset
+/HackHPI2026_release/
