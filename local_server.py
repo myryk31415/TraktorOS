@@ -52,29 +52,75 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 print(f"Model loaded on {device}")
 
+print("Loading MiDaS depth model...")
+midas = torch.hub.load('intel-isl/MiDaS', 'MiDaS_small')
+midas.eval().to(device)
+midas_transforms = torch.hub.load('intel-isl/MiDaS', 'transforms').small_transform
+print("MiDaS loaded")
+
 
 @app.route('/detect', methods=['POST'])
 def detect():
     data = request.get_json()
     image_data = base64.b64decode(data['image'])
     image = Image.open(io.BytesIO(image_data)).convert('RGB')
+    img_w, img_h = image.size
 
+    # Run Faster R-CNN
     img_tensor = F.to_tensor(image).unsqueeze(0).to(device)
     with torch.no_grad():
         preds = model(img_tensor)[0]
 
+    # Run MiDaS depth estimation
+    import cv2
+    import numpy as np
+    img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    midas_input = midas_transforms(img_cv).to(device)
+    with torch.no_grad():
+        depth = midas(midas_input)
+    depth = torch.nn.functional.interpolate(
+        depth.unsqueeze(1), size=(img_h, img_w), mode='bilinear', align_corners=False
+    ).squeeze().cpu().numpy()
+
+    # Normalize depth to 0-1 (higher = closer)
+    depth_min, depth_max = depth.min(), depth.max()
+    depth_norm = (depth - depth_min) / (depth_max - depth_min + 1e-6)
+
     detections = []
     for i in range(len(preds['boxes'])):
         if preds['labels'][i].item() in coco_core_agri_classes and preds['scores'][i].item() > CONFIDENCE_THRESHOLD:
+            box = [int(x) for x in preds['boxes'][i].tolist()]
+            x1, y1, x2, y2 = box
+
+            # Sample depth in lower half of bbox (feet area, more reliable)
+            mid_y = (y1 + y2) // 2
+            region = depth_norm[mid_y:y2, x1:x2]
+            rel_depth = float(region.mean()) if region.size > 0 else 0.0
+
+            if rel_depth > 0.6:
+                proximity = 'NEAR'
+            elif rel_depth > 0.3:
+                proximity = 'MEDIUM'
+            else:
+                proximity = 'FAR'
+
             detections.append({
-                'bbox': [int(x) for x in preds['boxes'][i].tolist()],
+                'bbox': box,
                 'confidence': float(preds['scores'][i].item()),
-                'class': coco_core_agri_classes[preds['labels'][i].item()]
+                'class': coco_core_agri_classes[preds['labels'][i].item()],
+                'depth': round(rel_depth, 3),
+                'proximity': proximity
             })
+
+    # Encode depth map as base64 PNG for visualization
+    depth_colored = cv2.applyColorMap((depth_norm * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
+    _, depth_png = cv2.imencode('.png', depth_colored)
+    depth_b64 = base64.b64encode(depth_png).decode()
 
     return jsonify({
         'detections': detections,
-        'image_size': {'width': image.size[0], 'height': image.size[1]}
+        'image_size': {'width': img_w, 'height': img_h},
+        'depth_map': depth_b64
     })
 
 

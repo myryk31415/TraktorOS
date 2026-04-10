@@ -145,6 +145,16 @@ uploadBtn.addEventListener('click', async () => {
         }
 
         displayResults(selectedImageDataUrl, result.detections || []);
+
+        // Show depth map if available
+        const depthContainer = document.getElementById('depthMapContainer');
+        const depthImg = document.getElementById('depthMapImage');
+        if (result.depth_map && depthContainer && depthImg) {
+            depthImg.src = 'data:image/png;base64,' + result.depth_map;
+            depthContainer.classList.remove('d-none');
+            document.getElementById('depthMapEmpty')?.classList.add('d-none');
+        }
+        if (statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
         
     } catch (error) {
         console.error('Error:', error);
@@ -354,6 +364,10 @@ function resetProcessedState() {
     ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
     const qb = document.getElementById('qualityBanner');
     if (qb) qb.classList.add('d-none');
+    const dc = document.getElementById('depthMapContainer');
+    if (dc) dc.classList.add('d-none');
+    const de = document.getElementById('depthMapEmpty');
+    if (de) de.classList.remove('d-none');
 }
 
 function setProcessingState(isProcessing) {
@@ -455,7 +469,8 @@ function displayResults(imageData, detections) {
             
             // Draw label
             const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
-            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%` + (inCorridor ? ' ⚠ IN PATH' : '');
+            const proxLabel = detection.proximity ? ` — ${detection.proximity}` : '';
+            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%${proxLabel}` + (inCorridor ? ' ⚠ IN PATH' : '');
             ctx.fillText(label, x1, y1 - 5);
         });
 
@@ -473,9 +488,13 @@ function displayResults(imageData, detections) {
         detectionInfo.innerHTML = detections.length
             ? detections.map((detection, index) => {
                 const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
+                const proxColors = {NEAR:'text-bg-danger',MEDIUM:'text-bg-warning',FAR:'text-bg-success'};
+                const proxBadge = detection.proximity
+                    ? `<span class="badge ${proxColors[detection.proximity] || 'text-bg-secondary'}">${detection.proximity}</span>`
+                    : '';
                 return `
                     <div class="detection-item">
-                        <span class="detection-label">${detectionClass} ${index + 1}</span>
+                        <span class="detection-label">${detectionClass} ${index + 1} ${proxBadge}</span>
                         <span class="detection-confidence">${(detection.confidence * 100).toFixed(1)}%</span>
                     </div>
                 `;
