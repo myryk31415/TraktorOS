@@ -122,12 +122,25 @@ uploadBtn.addEventListener('click', async () => {
         if (qualityRes) {
             const q = await qualityRes.json();
             qualityBanner.classList.remove('d-none', 'quality-good', 'quality-warn');
+            const metricsHtml = formatQualityMetrics(q.metrics || {});
             if (q.sufficient) {
                 qualityBanner.classList.add('quality-good');
-                qualityBanner.innerHTML = '✓ Image quality OK <span class="quality-details">blur=' + q.metrics.blur + ' bright=' + q.metrics.brightness + ' contrast=' + q.metrics.contrast + '</span>';
+                qualityBanner.innerHTML = `
+                    <span class="quality-main">
+                        <img class="quality-icon" src="icons/checkmark-outline.svg" alt="" aria-hidden="true">
+                        <span class="quality-title">Image quality OK</span>
+                    </span>
+                    ${metricsHtml}
+                `;
             } else {
                 qualityBanner.classList.add('quality-warn');
-                qualityBanner.innerHTML = '⚠ ' + q.issues.join(', ') + ' <span class="quality-details">blur=' + q.metrics.blur + ' bright=' + q.metrics.brightness + ' contrast=' + q.metrics.contrast + '</span>';
+                qualityBanner.innerHTML = `
+                    <span class="quality-main">
+                        <img class="quality-icon" src="icons/alert-outline.svg" alt="" aria-hidden="true">
+                        <span class="quality-title">${escapeHtml((q.issues || []).join(', ') || 'Quality issues detected')}</span>
+                    </span>
+                    ${metricsHtml}
+                `;
             }
         }
 
@@ -493,6 +506,27 @@ function formatDetectionSummary(detections) {
     return Array.from(counts.entries())
         .map(([className, count]) => `${count} ${count === 1 ? className : `${className}s`}`)
         .join(', ');
+}
+
+function formatQualityMetrics(metrics) {
+    const entries = [
+        ['Blur', metrics.blur],
+        ['Brightness', metrics.brightness],
+        ['Contrast', metrics.contrast]
+    ].filter(([, value]) => value !== undefined && value !== null);
+
+    if (!entries.length) return '';
+
+    return `
+        <span class="quality-metrics" aria-label="Image quality metrics">
+            ${entries.map(([label, value]) => `
+                <span class="quality-metric">
+                    <span class="quality-metric-label">${label}</span>
+                    <span class="quality-metric-value">${escapeHtml(value)}</span>
+                </span>
+            `).join('')}
+        </span>
+    `;
 }
 
 function updateModeBadge() {
