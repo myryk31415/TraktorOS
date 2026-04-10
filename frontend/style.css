@@ -633,6 +633,74 @@ body {
     opacity: 0.85;
 }
 
+#pathSettingsAccordion .accordion-item {
+    border-radius: 14px;
+    border: 1px solid rgba(137, 200, 219, 0.24) !important;
+    overflow: hidden;
+    background: linear-gradient(155deg, rgba(8, 30, 42, 0.58), rgba(4, 17, 25, 0.78));
+    box-shadow: 0 14px 28px rgba(1, 11, 18, 0.28);
+}
+
+#pathSettingsAccordion .accordion-button {
+    background: rgba(7, 21, 31, 0.72);
+    color: #e6f7ff;
+    border: 0;
+    box-shadow: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.88rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.8rem 1rem;
+}
+
+#pathSettingsAccordion .accordion-button:not(.collapsed) {
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.18), rgba(34, 211, 238, 0.12));
+    color: #eaffff;
+}
+
+#pathSettingsAccordion .accordion-button:focus {
+    box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.55);
+}
+
+#pathSettingsAccordion .accordion-button::after {
+    filter: brightness(0) saturate(100%) invert(89%) sepia(22%) saturate(378%) hue-rotate(128deg) brightness(98%) contrast(96%);
+    opacity: 0.9;
+}
+
+#pathSettingsAccordion .accordion-body {
+    border-top: 1px solid rgba(137, 200, 219, 0.16);
+    background: rgba(6, 22, 30, 0.52);
+    padding: 0.95rem 1rem 1rem;
+}
+
+#pathSettingsAccordion .mode-toggle {
+    background: rgba(5, 20, 29, 0.62);
+    border: 1px solid rgba(137, 200, 219, 0.18);
+    border-radius: 12px;
+    padding: 0.7rem 0.75rem;
+}
+
+#pathSettingsAccordion .form-label {
+    display: block;
+    margin-bottom: 0.45rem !important;
+    color: #d9f4ff;
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+#pathSettingsAccordion #tractorWidthLabel,
+#pathSettingsAccordion #horizonLineLabel {
+    color: #daf6ff;
+    font-weight: 700;
+    font-size: 0.82rem;
+    border: 1px solid rgba(137, 200, 219, 0.28);
+    border-radius: 9px;
+    padding: 0.2rem 0.45rem;
+    background: rgba(10, 30, 42, 0.62);
+    text-align: center;
+}
+
 .form-range::-webkit-slider-thumb {
     background: #4f86ff;
 }
