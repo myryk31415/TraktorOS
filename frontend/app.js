@@ -69,7 +69,7 @@ imageInput.addEventListener('change', async (e) => {
         if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
         if (detectionCountBadge) detectionCountBadge.textContent = '0';
         if (selectedFileMeta) selectedFileMeta.textContent = 'No image selected';
-        if (detectionSummary) detectionSummary.textContent = 'No humans detected yet.';
+        if (detectionSummary) detectionSummary.textContent = 'No detections yet.';
         resetSelectedPreview();
         resetProcessedState();
         return;
@@ -100,7 +100,7 @@ uploadBtn.addEventListener('click', async () => {
     uploadBtn.disabled = true;
     imageInput.disabled = true;
     setProcessingState(true);
-    if (statusHint) statusHint.textContent = 'Running human detection...';
+    if (statusHint) statusHint.textContent = 'Running object detection...';
 
     try {
         const mode = document.querySelector('input[name="mode"]:checked').value;
@@ -210,7 +210,7 @@ function buildAnalysisCards(analysisData) {
     const qualityDescription = qualityIssues.length
         ? qualityIssues.join(', ')
         : quality.sufficient_for_human_detection === true
-            ? 'Image quality is sufficient for human detection.'
+            ? 'Image quality is sufficient for object detection.'
             : 'No image quality details reported.';
 
     const soilConcerns = Array.isArray(soil.concerns) ? soil.concerns.filter(Boolean) : [];
@@ -450,7 +450,8 @@ function displayResults(imageData, detections) {
             ctx.strokeRect(x1, y1, width, height);
             
             // Draw label
-            const label = `Human ${(detection.confidence * 100).toFixed(1)}%` + (inCorridor ? ' ⚠ IN PATH' : '');
+            const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
+            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%` + (inCorridor ? ' ⚠ IN PATH' : '');
             ctx.fillText(label, x1, y1 - 5);
         });
 
@@ -459,18 +460,19 @@ function displayResults(imageData, detections) {
         processedCanvas.classList.remove('d-none');
         if (detectionCountBadge) detectionCountBadge.textContent = String(detections.length);
         if (detectionSummary) detectionSummary.textContent = detections.length
-            ? `Detected ${detections.length} human${detections.length > 1 ? 's' : ''} in the current frame.`
-            : 'No humans detected in the latest run.';
+            ? `Detected ${formatDetectionSummary(detections)} in the current frame.`
+            : 'No detections in the latest run.';
         detectionInfo.innerHTML = detections.length
             ? detections.map((detection, index) => {
+                const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
                 return `
                     <div class="detection-item">
-                        <span class="detection-label">Human ${index + 1}</span>
+                        <span class="detection-label">${detectionClass} ${index + 1}</span>
                         <span class="detection-confidence">${(detection.confidence * 100).toFixed(1)}%</span>
                     </div>
                 `;
             }).join('')
-            : '<div class="text-body-secondary">No humans detected.</div>';
+            : '<div class="text-body-secondary">No detections.</div>';
     };
     img.src = imageData;
 }
@@ -479,6 +481,24 @@ function setInitialUiState() {
     updateModeBadge();
     if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
     if (detectionCountBadge) detectionCountBadge.textContent = '0';
+}
+
+function formatDetectionClass(value) {
+    const normalized = String(value || 'object').trim().replace(/[_-]+/g, ' ');
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatDetectionSummary(detections) {
+    const counts = new Map();
+
+    detections.forEach((detection) => {
+        const key = String(detection.class || detection.label || detection.category || 'object').trim().toLowerCase().replace(/[_-]+/g, ' ');
+        counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+        .map(([className, count]) => `${count} ${count === 1 ? className : `${className}s`}`)
+        .join(', ');
 }
 
 function updateModeBadge() {

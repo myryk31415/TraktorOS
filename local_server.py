@@ -14,8 +14,35 @@ from torchvision.transforms import functional as F
 app = Flask(__name__)
 CORS(app)
 
-# COCO class index 1 = person
-PERSON_CLASS = 1
+coco_core_agri_classes = {
+    # Humans (highest priority)
+    1: "person",
+
+    # Vehicles / moving hazards
+    2: "bicycle",
+    3: "car",
+    4: "motorcycle",
+    8: "truck",
+
+    # Large animals (real farm risk)
+    18: "dog",
+    19: "horse",
+    20: "sheep",
+    21: "cow",
+
+    # Small / fast unpredictable
+    16: "bird",
+
+    # Basic road interaction (edge of fields, crossings)
+    10: "traffic light",
+    13: "stop sign",
+
+    # Generic obstacles (proxies for "stuff in the way")
+    62: "chair",
+    64: "potted plant",
+    27: "backpack"
+}
+
 CONFIDENCE_THRESHOLD = 0.5
 
 print("Loading pretrained Faster R-CNN...")
@@ -38,10 +65,11 @@ def detect():
 
     detections = []
     for i in range(len(preds['boxes'])):
-        if preds['labels'][i].item() == PERSON_CLASS and preds['scores'][i].item() > CONFIDENCE_THRESHOLD:
+        if preds['labels'][i].item() in coco_core_agri_classes and preds['scores'][i].item() > CONFIDENCE_THRESHOLD:
             detections.append({
                 'bbox': [int(x) for x in preds['boxes'][i].tolist()],
-                'confidence': float(preds['scores'][i].item())
+                'confidence': float(preds['scores'][i].item()),
+                'class': coco_core_agri_classes[preds['labels'][i].item()]
             })
 
     return jsonify({
