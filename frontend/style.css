@@ -259,6 +259,120 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+.analysis-list,
+.bedrock-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.analysis-card {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(15, 23, 42, 0.58);
+    padding: 0.85rem 1rem;
+}
+
+.analysis-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.45rem;
+}
+
+.analysis-card-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.analysis-card-left-icon {
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    background: rgba(148, 163, 184, 0.16);
+}
+
+.analysis-card-left-icon img {
+    width: 0.92rem;
+    height: 0.92rem;
+    object-fit: contain;
+    display: block;
+    filter: invert(86%) sepia(10%) saturate(493%) hue-rotate(175deg) brightness(101%) contrast(95%);
+}
+
+.analysis-card-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f5f9ff;
+}
+
+.analysis-status-icon {
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+}
+
+.analysis-status-icon img {
+    width: 0.86rem;
+    height: 0.86rem;
+    object-fit: contain;
+    display: block;
+}
+
+.analysis-status-icon.status-success {
+    background: #4ade80;
+}
+
+.analysis-status-icon.status-success img {
+    filter: invert(15%) sepia(44%) saturate(1199%) hue-rotate(98deg) brightness(93%) contrast(104%);
+}
+
+.analysis-status-icon.status-warning {
+    background: #fbbf24;
+}
+
+.analysis-status-icon.status-warning img {
+    filter: invert(16%) sepia(37%) saturate(1936%) hue-rotate(359deg) brightness(98%) contrast(104%);
+}
+
+.analysis-status-icon.status-danger {
+    background: #f87171;
+}
+
+.analysis-status-icon.status-danger img {
+    filter: invert(14%) sepia(53%) saturate(1987%) hue-rotate(346deg) brightness(91%) contrast(104%);
+}
+
+.analysis-status-icon.status-info {
+    background: #93c5fd;
+    opacity: 0;
+}
+
+.analysis-status-icon.status-info img {
+    filter: invert(18%) sepia(47%) saturate(1162%) hue-rotate(184deg) brightness(95%) contrast(98%);
+}
+
+.analysis-card-description {
+    margin: 0;
+    color: #d7e6f7;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.bedrock-skeleton .placeholder {
+    background-color: rgba(148, 163, 184, 0.32);
+    border-radius: 999px;
+    min-height: 0.8rem;
+}
+
 .spinner-border {
     width: 3.25rem;
     height: 3.25rem;
