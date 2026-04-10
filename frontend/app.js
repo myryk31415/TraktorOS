@@ -19,6 +19,22 @@ const ctx = canvas.getContext('2d');
 let selectedImage = null;
 let selectedImageDataUrl = null;
 let previewObjectUrl = null;
+let lastDetections = [];
+let lastImageData = null;
+
+const tractorWidthSlider = document.getElementById('tractorWidth');
+const tractorWidthLabel = document.getElementById('tractorWidthLabel');
+const horizonSlider = document.getElementById('horizonLine');
+const horizonLabel = document.getElementById('horizonLineLabel');
+
+tractorWidthSlider.addEventListener('input', () => {
+    tractorWidthLabel.textContent = tractorWidthSlider.value + '%';
+    if (lastImageData) displayResults(lastImageData, lastDetections);
+});
+horizonSlider.addEventListener('input', () => {
+    horizonLabel.textContent = horizonSlider.value + '%';
+    if (lastImageData) displayResults(lastImageData, lastDetections);
+});
 
 const bedrockBtn = document.getElementById('bedrockBtn');
 const bedrockSkeleton = document.getElementById('bedrockSkeleton');
@@ -357,6 +373,8 @@ function fileToBase64(file) {
 }
 
 function displayResults(imageData, detections) {
+    lastImageData = imageData;
+    lastDetections = detections;
     const img = new Image();
     img.onload = () => {
         canvas.width = img.width;
@@ -364,23 +382,75 @@ function displayResults(imageData, detections) {
         
         // Draw image
         ctx.drawImage(img, 0, 0);
+
+        // Draw tractor width corridor (perspective trapezoid)
+        const widthPct = parseInt(tractorWidthSlider.value) / 100;
+        const horizonPct = parseInt(horizonSlider.value) / 100;
+        const horizonY = img.height * horizonPct;
+        const bottomW = img.width * widthPct;
+        const cx = img.width / 2;
+        const bottomLeft = cx - bottomW / 2;
+        const bottomRight = cx + bottomW / 2;
+
+        // Corridor converges to vanishing point at horizon
+        // Dim area outside corridor
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.lineTo(img.width, 0);
+        ctx.lineTo(img.width, horizonY); ctx.lineTo(0, horizonY);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, horizonY); ctx.lineTo(cx, horizonY);
+        ctx.lineTo(bottomLeft, img.height); ctx.lineTo(0, img.height);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx, horizonY); ctx.lineTo(img.width, horizonY);
+        ctx.lineTo(img.width, img.height); ctx.lineTo(bottomRight, img.height);
+        ctx.fill();
+
+        // Draw corridor edge lines
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 6]);
+        ctx.beginPath();
+        ctx.moveTo(cx, horizonY); ctx.lineTo(bottomLeft, img.height);
+        ctx.moveTo(cx, horizonY); ctx.lineTo(bottomRight, img.height);
+        ctx.stroke();
+        // Horizon line
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(0, horizonY); ctx.lineTo(img.width, horizonY);
+        ctx.stroke();
+        ctx.setLineDash([]);
         
         // Draw bounding boxes
-        ctx.strokeStyle = '#00ff00';
         ctx.lineWidth = 3;
         ctx.font = '16px Arial';
-        ctx.fillStyle = '#00ff00';
         
         detections.forEach(detection => {
             const [x1, y1, x2, y2] = detection.bbox;
             const width = x2 - x1;
             const height = y2 - y1;
+
+            // Check if detection center is inside the trapezoid
+            const bCenterX = (x1 + x2) / 2;
+            const bCenterY = (y1 + y2) / 2;
+            let inCorridor = false;
+            if (bCenterY > horizonY) {
+                const t = (bCenterY - horizonY) / (img.height - horizonY);
+                const edgeLeft = cx + (bottomLeft - cx) * t;
+                const edgeRight = cx + (bottomRight - cx) * t;
+                inCorridor = bCenterX > edgeLeft && bCenterX < edgeRight;
+            }
+
+            ctx.strokeStyle = inCorridor ? '#ef4444' : '#00ff00';
+            ctx.fillStyle = ctx.strokeStyle;
             
             // Draw box
             ctx.strokeRect(x1, y1, width, height);
             
             // Draw label
-            const label = `Human ${(detection.confidence * 100).toFixed(1)}%`;
+            const label = `Human ${(detection.confidence * 100).toFixed(1)}%` + (inCorridor ? ' ⚠ IN PATH' : '');
             ctx.fillText(label, x1, y1 - 5);
         });
 

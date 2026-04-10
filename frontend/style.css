@@ -632,3 +632,10 @@ body {
     font-size: 0.8rem;
     opacity: 0.85;
 }
+
+.form-range::-webkit-slider-thumb {
+    background: #4f86ff;
+}
+.form-range::-webkit-slider-runnable-track {
+    background: rgba(148, 163, 184, 0.25);
+}

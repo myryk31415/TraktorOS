@@ -77,6 +77,20 @@
                                                 <label class="btn btn-outline-primary" for="modeSagemaker">SageMaker</label>
                                             </div>
                                         </div>
+                                        <div class="mode-toggle">
+                                            <span class="form-label mb-0 fw-semibold">Tractor width</span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="range" class="form-range flex-grow-1" id="tractorWidth" min="10" max="200" value="90">
+                                                <span id="tractorWidthLabel" class="text-nowrap" style="min-width:3.5rem">90%</span>
+                                            </div>
+                                        </div>
+                                        <div class="mode-toggle">
+                                            <span class="form-label mb-0 fw-semibold">Horizon line</span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="range" class="form-range flex-grow-1" id="horizonLine" min="5" max="80" value="36">
+                                                <span id="horizonLineLabel" class="text-nowrap" style="min-width:3.5rem">36%</span>
+                                            </div>
+                                        </div>
                                         <p id="statusHint" class="status-hint mb-0">Choose an image to start the pipeline.</p>
                                         <button id="uploadBtn" class="btn btn-primary btn-lg" disabled>Run detection</button>
                                         <button id="bedrockBtn" class="btn btn-outline-primary btn-lg" disabled>Ask Bedrock</button>
