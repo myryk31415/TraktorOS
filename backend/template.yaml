@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TraktorOS Human Detection API
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  HumanDetectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          SAGEMAKER_ENDPOINT: traktoros-human-detection
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - sagemaker:InvokeEndpoint
+            Resource: '*'
+      Events:
+        DetectAPI:
+          Type: Api
+          Properties:
+            Path: /detect
+            Method: post
+            RestApiId: !Ref HumanDetectionApi
+  
+  HumanDetectionApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST, OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  HumanDetectionApi:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${HumanDetectionApi}.execute-api.${AWS::Region}.amazonaws.com/prod/detect"

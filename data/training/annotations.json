@@ -1,0 +1,6 @@
+[
+  {
+    "image": "images/example1.jpg",
+    "boxes": [[100, 150, 200, 400]]
+  }
+]

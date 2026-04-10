@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TraktorOS - Human Detection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚜 TraktorOS Human Detection</h1>
+            <p>Upload an image to detect humans in the tractor's field of view</p>
+        </header>
+
+        <div class="upload-section">
+            <div class="mode-toggle">
+                <label><input type="radio" name="mode" value="local" checked> Local (Pretrained)</label>
+                <label><input type="radio" name="mode" value="sagemaker"> SageMaker (Custom)</label>
+            </div>
+            <input type="file" id="imageInput" accept="image/*">
+            <button id="uploadBtn">Detect Humans</button>
+        </div>
+
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h2>Detection Results</h2>
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div id="detectionInfo"></div>
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing image...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
