@@ -2,7 +2,6 @@ const ENDPOINTS = {
     local: 'http://localhost:5000/detect',
     sagemaker: 'YOUR_API_GATEWAY_URL',
     bedrock: 'http://localhost:5000/detect-bedrock',
-    localLlm: 'http://localhost:5000/detect-local-llm',
     quality: 'http://localhost:5000/quality'
 };
 
@@ -22,7 +21,6 @@ let selectedImageDataUrl = null;
 let previewObjectUrl = null;
 
 const bedrockBtn = document.getElementById('bedrockBtn');
-const localLlmBtn = document.getElementById('localLlmBtn');
 const bedrockSkeleton = document.getElementById('bedrockSkeleton');
 const bedrockEmpty = document.getElementById('bedrockEmpty');
 const bedrockResults = document.getElementById('bedrockResults');
@@ -51,7 +49,6 @@ imageInput.addEventListener('change', async (e) => {
         selectedImageDataUrl = null;
         uploadBtn.disabled = true;
         bedrockBtn.disabled = true;
-        localLlmBtn.disabled = true;
         if (statusHint) statusHint.textContent = 'Choose an image to start the pipeline.';
         if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
         if (detectionCountBadge) detectionCountBadge.textContent = '0';
@@ -65,7 +62,6 @@ imageInput.addEventListener('change', async (e) => {
     selectedImage = file;
     uploadBtn.disabled = false;
     bedrockBtn.disabled = false;
-    localLlmBtn.disabled = false;
     if (selectedFileMeta) selectedFileMeta.textContent = `${file.name} (${formatFileSize(file.size)})`;
     if (statusHint) statusHint.textContent = 'Image loaded. Run detection or request analysis.';
 
@@ -142,7 +138,6 @@ async function runAnalysis(endpoint) {
     if (!selectedImageDataUrl) return;
 
     bedrockBtn.disabled = true;
-    localLlmBtn.disabled = true;
     bedrockEmpty.classList.add('d-none');
     bedrockResults.classList.add('d-none');
     bedrockSkeleton.classList.remove('d-none');
@@ -185,7 +180,6 @@ async function runAnalysis(endpoint) {
         if (analysisStateBadge) analysisStateBadge.textContent = 'Error';
     } finally {
         bedrockBtn.disabled = !selectedImage;
-        localLlmBtn.disabled = !selectedImage;
     }
 }
 
@@ -320,7 +314,6 @@ function escapeHtml(value) {
 }
 
 bedrockBtn.addEventListener('click', () => runAnalysis(ENDPOINTS.bedrock));
-localLlmBtn.addEventListener('click', () => runAnalysis(ENDPOINTS.localLlm));
 
 function resetSelectedPreview() {
     if (previewObjectUrl) {
