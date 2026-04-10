@@ -1,6 +1,7 @@
 const ENDPOINTS = {
     local: 'http://localhost:5000/detect',
-    sagemaker: 'YOUR_API_GATEWAY_URL' // Replace after deployment
+    sagemaker: 'YOUR_API_GATEWAY_URL',
+    bedrock: 'http://localhost:5000/detect-bedrock'
 };
 
 const imageInput = document.getElementById('imageInput');
@@ -20,6 +21,14 @@ let selectedImage = null;
 let selectedImageDataUrl = null;
 let previewObjectUrl = null;
 
+const bedrockBtn = document.getElementById('bedrockBtn');
+const bedrockStatus = document.getElementById('bedrockStatus');
+const bedrockSpinner = document.getElementById('bedrockSpinner');
+const bedrockEmpty = document.getElementById('bedrockEmpty');
+const bedrockResults = document.getElementById('bedrockResults');
+const bedrockSummary = document.getElementById('bedrockSummary');
+const bedrockDetections = document.getElementById('bedrockDetections');
+
 uploadBtn.disabled = true;
 
 imageInput.addEventListener('change', async (e) => {
@@ -29,6 +38,7 @@ imageInput.addEventListener('change', async (e) => {
         selectedImage = null;
         selectedImageDataUrl = null;
         uploadBtn.disabled = true;
+        bedrockBtn.disabled = true;
         resetSelectedPreview();
         resetProcessedState();
         return;
@@ -36,6 +46,7 @@ imageInput.addEventListener('change', async (e) => {
 
     selectedImage = file;
     uploadBtn.disabled = false;
+    bedrockBtn.disabled = false;
 
     if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
@@ -82,6 +93,70 @@ uploadBtn.addEventListener('click', async () => {
     } finally {
         imageInput.disabled = false;
         uploadBtn.disabled = !selectedImage;
+    }
+});
+
+bedrockBtn.addEventListener('click', async () => {
+    if (!selectedImageDataUrl) return;
+
+    bedrockBtn.disabled = true;
+    bedrockEmpty.classList.add('d-none');
+    bedrockResults.classList.add('d-none');
+    bedrockSpinner.classList.remove('d-none');
+    bedrockStatus.textContent = 'Processing';
+
+    try {
+        const response = await fetch(ENDPOINTS.bedrock, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: selectedImageDataUrl.split(',')[1] })
+        });
+        const result = await response.json();
+
+        bedrockSummary.textContent = result.summary || '';
+
+        let html = '';
+
+        // Image quality
+        const q = result.image_quality;
+        if (q) {
+            const qBadge = q.sufficient_for_human_detection ? 'text-bg-success' : 'text-bg-danger';
+            const qLabel = q.sufficient_for_human_detection ? 'Sufficient' : 'Insufficient';
+            html += `<div class="detection-item"><span class="detection-label">Human detection quality</span><span class="badge ${qBadge}">${qLabel}</span></div>`;
+            if (q.issues && q.issues.length) html += `<div class="detection-item"><span class="text-body-secondary">${q.issues.join(', ')}</span></div>`;
+        }
+
+        // Soil
+        const s = result.soil_assessment;
+        if (s) {
+            const tColors = {good:'text-bg-success',moderate:'text-bg-warning',poor:'text-bg-danger',impassable:'text-bg-danger'};
+            html += `<div class="detection-item"><span class="detection-label">Soil: ${s.condition}</span><span class="badge ${tColors[s.traversability] || 'text-bg-secondary'}">${s.traversability}</span></div>`;
+            if (s.concerns && s.concerns.length) html += `<div class="detection-item"><span class="text-body-secondary">${s.concerns.join(', ')}</span></div>`;
+        }
+
+        // Obstacles
+        if (result.obstacles && result.obstacles.length) {
+            const sevColors = {critical:'text-bg-danger',warning:'text-bg-warning',info:'text-bg-info'};
+            result.obstacles.forEach(o => {
+                html += `<div class="detection-item"><span class="detection-label">${o.type}</span><span class="badge ${sevColors[o.severity] || 'text-bg-secondary'}">${o.severity}</span></div>`;
+                html += `<div class="detection-item"><span class="text-body-secondary">${o.description}</span></div>`;
+            });
+        } else {
+            html += '<div class="detection-item"><span class="text-body-secondary">No obstacles detected</span></div>';
+        }
+
+        bedrockDetections.innerHTML = html;
+
+        bedrockSpinner.classList.add('d-none');
+        bedrockResults.classList.remove('d-none');
+        bedrockStatus.textContent = `${(result.detections || []).length} detected`;
+    } catch (error) {
+        console.error('Bedrock error:', error);
+        bedrockSpinner.classList.add('d-none');
+        bedrockEmpty.classList.remove('d-none');
+        bedrockStatus.textContent = 'Error';
+    } finally {
+        bedrockBtn.disabled = !selectedImage;
     }
 });
 

@@ -3,3 +3,4 @@ torchvision
 flask
 flask-cors
 pillow
+boto3

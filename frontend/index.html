@@ -60,6 +60,7 @@
                                             </div>
                                         </div>
                                         <button id="uploadBtn" class="btn btn-primary btn-lg" disabled>Run detection</button>
+                                        <button id="bedrockBtn" class="btn btn-outline-primary btn-lg" disabled>Ask Bedrock</button>
                                     </div>
                                 </div>
                             </div>
@@ -113,14 +114,22 @@
                     <article class="card panel-card border-0 shadow-sm flex-fill">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
                             <div class="d-flex align-items-center justify-content-between gap-3">
-                                <h2 class="h4 mb-0">Free block</h2>
-                                <span class="badge text-bg-light border">Reserved</span>
+                                <h2 class="h4 mb-0">Bedrock Analysis</h2>
+                                <span id="bedrockStatus" class="badge text-bg-light border">Waiting</span>
                             </div>
                         </div>
                         <div class="card-body p-4 pt-3">
-                            <div class="empty-slot">
-                                <p class="mb-1 fw-semibold">Available for future content</p>
-                                <p class="mb-0 text-body-secondary">This block is intentionally left open for later use.</p>
+                            <div id="bedrockSpinner" class="text-center py-4 d-none">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mb-0 mt-3 fw-semibold">Asking Bedrock…</p>
+                            </div>
+                            <div id="bedrockEmpty" class="empty-slot">
+                                <p class="mb-1 fw-semibold">No analysis yet</p>
+                                <p class="mb-0 text-body-secondary">Upload an image and click "Ask Bedrock" to get an AI scene analysis.</p>
+                            </div>
+                            <div id="bedrockResults" class="d-none">
+                                <p id="bedrockSummary" class="mb-3 text-body-secondary"></p>
+                                <div id="bedrockDetections" class="detection-info"></div>
                             </div>
                         </div>
                     </article>

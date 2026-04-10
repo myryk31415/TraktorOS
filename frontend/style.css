@@ -200,7 +200,7 @@ body {
 }
 
 .placeholder-caption {
-    color: #b8c7da;
+    color: #e5eef7;
     font-weight: 600;
 }
 
@@ -298,4 +298,8 @@ body {
     .preview-frame {
         min-height: 260px;
     }
+}
+
+.text-body-secondary {
+    color: #c8d8ec !important;
 }
