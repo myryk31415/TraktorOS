@@ -44,8 +44,6 @@ const bedrockDetections = document.getElementById('bedrockDetections');
 const activeModeBadge = document.getElementById('activeModeBadge');
 const selectedFileMeta = document.getElementById('selectedFileMeta');
 const detectionCountBadge = document.getElementById('detectionCountBadge');
-const analysisStateBadge = document.getElementById('analysisStateBadge');
-const statusHint = document.getElementById('statusHint');
 const detectionSummary = document.getElementById('detectionSummary');
 
 uploadBtn.disabled = true;
@@ -65,8 +63,6 @@ imageInput.addEventListener('change', async (e) => {
         selectedImageDataUrl = null;
         uploadBtn.disabled = true;
         bedrockBtn.disabled = true;
-        if (statusHint) statusHint.textContent = 'Choose an image to start the pipeline.';
-        if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
         if (detectionCountBadge) detectionCountBadge.textContent = '0';
         if (selectedFileMeta) selectedFileMeta.textContent = 'No image selected';
         if (detectionSummary) detectionSummary.textContent = 'No detections yet.';
@@ -79,7 +75,6 @@ imageInput.addEventListener('change', async (e) => {
     uploadBtn.disabled = false;
     bedrockBtn.disabled = false;
     if (selectedFileMeta) selectedFileMeta.textContent = `${file.name} (${formatFileSize(file.size)})`;
-    if (statusHint) statusHint.textContent = 'Image loaded. Run detection or request analysis.';
 
     if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
@@ -100,7 +95,6 @@ uploadBtn.addEventListener('click', async () => {
     uploadBtn.disabled = true;
     imageInput.disabled = true;
     setProcessingState(true);
-    if (statusHint) statusHint.textContent = 'Running object detection...';
 
     try {
         const mode = document.querySelector('input[name="mode"]:checked').value;
@@ -137,12 +131,10 @@ uploadBtn.addEventListener('click', async () => {
         }
 
         displayResults(selectedImageDataUrl, result.detections || []);
-        if (statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
         
     } catch (error) {
         console.error('Error:', error);
         alert('Error processing image. Please try again.');
-        if (statusHint) statusHint.textContent = 'Detection failed. Please retry with another image.';
         setProcessingState(false);
     } finally {
         imageInput.disabled = false;
@@ -157,7 +149,6 @@ async function runAnalysis(endpoint) {
     bedrockEmpty.classList.add('d-none');
     bedrockResults.classList.add('d-none');
     bedrockSkeleton.classList.remove('d-none');
-    if (analysisStateBadge) analysisStateBadge.textContent = 'Running';
 
     try {
         const response = await fetch(endpoint, {
@@ -186,14 +177,12 @@ async function runAnalysis(endpoint) {
 
         bedrockSkeleton.classList.add('d-none');
         bedrockResults.classList.remove('d-none');
-        if (analysisStateBadge) analysisStateBadge.textContent = 'Ready';
     } catch (error) {
         console.error('Analysis error:', error);
         bedrockSkeleton.classList.add('d-none');
         bedrockEmpty.querySelector('p').textContent = 'Analysis failed';
         bedrockEmpty.querySelector('.text-body-secondary').textContent = String(error.message || 'Please try again.');
         bedrockEmpty.classList.remove('d-none');
-        if (analysisStateBadge) analysisStateBadge.textContent = 'Error';
     } finally {
         bedrockBtn.disabled = !selectedImage;
     }
@@ -479,7 +468,6 @@ function displayResults(imageData, detections) {
 
 function setInitialUiState() {
     updateModeBadge();
-    if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
     if (detectionCountBadge) detectionCountBadge.textContent = '0';
 }
 
