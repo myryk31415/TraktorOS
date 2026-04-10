@@ -2,20 +2,36 @@
 from __future__ import annotations
 
 import argparse
+import time
 from pathlib import Path
+from typing import Any
 
+import numpy as np
 import torch
 from PIL import Image, ImageDraw
 from torchvision.models.detection import (
     FasterRCNN_ResNet50_FPN_Weights,
+    FasterRCNN_ResNet50_FPN_V2_Weights,
     fasterrcnn_resnet50_fpn,
+    fasterrcnn_resnet50_fpn_v2,
 )
+from rfdetr import RFDETRLarge, RFDETRSmall
+from ultralytics import YOLO
 
 from coco_dataset import CocoDetectionDataset
 
 import boto3
 
 BUCKET_NAME = "traktoros-training-data"
+
+MODEL_TYPES = [
+    # "fasterrcnn",
+    "fasterrcnn_v2",
+    # "rfdetr-large",
+    # "rfdetr-small",
+    # "yolo11-x",
+]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -137,6 +153,86 @@ def box_iou_one_to_many(one_box: torch.Tensor, many_boxes: torch.Tensor) -> torc
     return inter_area / union.clamp(min=1e-6)
 
 
+def image_tensor_to_numpy(image_tensor: torch.Tensor) -> np.ndarray:
+    return image_tensor.detach().cpu().clamp(0, 1).mul(255).byte().permute(1, 2, 0).numpy()
+
+
+def init_model(model_name: str, device: torch.device) -> Any:
+    if model_name == "fasterrcnn":
+        model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
+        model.eval()
+        model.to(device)
+        return model
+
+    if model_name == "fasterrcnn_v2":
+        model = fasterrcnn_resnet50_fpn_v2(weights=FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT)
+        model.eval()
+        model.to(device)
+        return model
+
+    if model_name == "rfdetr-large":
+        return RFDETRLarge()
+
+    if model_name == "rfdetr-small":
+        return RFDETRSmall()
+
+    if model_name == "yolo11-x":
+        model = YOLO("yolo11x.pt")
+        try:
+            model.to(str(device))
+        except Exception:
+            pass
+        return model
+
+    raise ValueError(f"Unsupported model type: {model_name}")
+
+
+def prediction_to_tensors(
+    model: Any,
+    model_name: str,
+    image_tensor: torch.Tensor,
+    device: torch.device,
+    confidence_threshold: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    if model_name in {"fasterrcnn", "fasterrcnn_v2"}:
+        inputs = [image_tensor.to(device)]
+        prediction = model(inputs)[0]
+        return (
+            prediction["boxes"].detach().cpu(),
+            prediction["labels"].detach().cpu(),
+            prediction["scores"].detach().cpu(),
+        )
+
+    image_np = image_tensor_to_numpy(image_tensor)
+
+    if model_name.startswith("rfdetr"):
+        detections = model.predict(image_np, threshold=confidence_threshold)
+
+        boxes_np = getattr(detections, "xyxy", np.zeros((0, 4), dtype=np.float32))
+        labels_np = getattr(detections, "class_id", np.zeros((0,), dtype=np.int64))
+        scores_np = getattr(detections, "confidence", np.zeros((0,), dtype=np.float32))
+
+        boxes = torch.as_tensor(boxes_np, dtype=torch.float32)
+        labels = torch.as_tensor(labels_np, dtype=torch.int64)
+        scores = torch.as_tensor(scores_np, dtype=torch.float32)
+        return boxes, labels, scores
+
+    if model_name == "yolo11-x":
+        result = model.predict(source=image_np, conf=confidence_threshold, verbose=False)[0]
+        boxes = result.boxes.xyxy.detach().cpu().to(dtype=torch.float32)
+        labels = result.boxes.cls.detach().cpu().to(dtype=torch.int64)
+        scores = result.boxes.conf.detach().cpu().to(dtype=torch.float32)
+        return boxes, labels, scores
+
+    raise ValueError(f"Unsupported model type: {model_name}")
+
+
+def predicted_person_class_id(model_name: str) -> int:
+    if model_name in {"fasterrcnn", "fasterrcnn_v2"}:
+        return 1
+    return 0
+
+
 def _box_to_tuple(box: torch.Tensor) -> tuple[float, float, float, float]:
     return tuple(float(value) for value in box.tolist())
 
@@ -196,7 +292,8 @@ def greedy_match(
 
 
 def evaluate(
-    model: torch.nn.Module,
+    model: Any,
+    model_name: str,
     annotation_files: list[Path],
     image_root: Path,
     device: torch.device,
@@ -225,14 +322,18 @@ def evaluate(
                 if max_images is not None and total_images >= max_images:
                     break
 
-                inputs = [image_tensor.to(device)]
-                prediction = model(inputs)[0]
+                pred_boxes, pred_labels, pred_scores = prediction_to_tensors(
+                    model=model,
+                    model_name=model_name,
+                    image_tensor=image_tensor,
+                    device=device,
+                    confidence_threshold=confidence_threshold,
+                )
 
-                pred_labels = prediction["labels"].detach().cpu()
-                pred_scores = prediction["scores"].detach().cpu()
-                pred_boxes = prediction["boxes"].detach().cpu()
-
-                pred_keep = (pred_labels == 1) & (pred_scores >= confidence_threshold)
+                pred_keep = (
+                    (pred_labels == predicted_person_class_id(model_name))
+                    & (pred_scores >= confidence_threshold)
+                )
                 filtered_pred_boxes = pred_boxes[pred_keep]
 
                 gt_boxes = target["boxes"].detach().cpu()
@@ -324,11 +425,6 @@ def main() -> None:
     device = torch.device(
         "cpu" if args.cpu else ("cuda" if torch.cuda.is_available() else "cpu")
     )
-    model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
-    model.eval()
-    model.to(device)
-
-    print("Evaluating pretrained Faster R-CNN")
     print(f"Device: {device}")
     print(f"Annotations found: {len(annotation_files)}")
     print(f"Image root: {image_root}")
@@ -339,28 +435,48 @@ def main() -> None:
     else:
         print(f"Ground-truth filtering: category_id == {args.person_category_id}")
 
-    results = evaluate(
-        model=model,
-        annotation_files=annotation_files,
-        image_root=image_root,
-        device=device,
-        confidence_threshold=args.confidence_threshold,
-        iou_threshold=args.iou_threshold,
-        person_category_id=args.person_category_id,
-        max_images=args.max_images,
-        verbose=args.verbose,
-        fail_dir=args.fail_dir
-    )
+    overall_start = time.perf_counter()
 
-    print("\nEvaluation results")
-    print(f"Images evaluated: {results['images_evaluated']}")
-    print(f"TP: {results['tp']}")
-    print(f"FP: {results['fp']}")
-    print(f"FN: {results['fn']}")
-    print(f"Precision: {results['precision']:.4f}")
-    print(f"Recall: {results['recall']:.4f}")
-    print(f"F1 score: {results['f1']:.4f}")
-    print(f"Mean IoU (matched TPs): {results['mean_iou']:.4f}")
+    for model_name in MODEL_TYPES:
+        print(f"\nEvaluating model: {model_name}")
+        model = init_model(model_name=model_name, device=device)
+
+        model_start = time.perf_counter()
+
+        results = evaluate(
+            model=model,
+            model_name=model_name,
+            annotation_files=annotation_files,
+            image_root=image_root,
+            device=device,
+            confidence_threshold=args.confidence_threshold,
+            iou_threshold=args.iou_threshold,
+            person_category_id=args.person_category_id,
+            max_images=args.max_images,
+            verbose=args.verbose,
+            fail_dir=args.fail_dir,
+        )
+
+        elapsed_seconds = time.perf_counter() - model_start
+        images_evaluated = int(results["images_evaluated"])
+        images_per_second = (
+            images_evaluated / elapsed_seconds if elapsed_seconds > 0 else 0.0
+        )
+
+        print("Evaluation results")
+        print(f"Images evaluated: {results['images_evaluated']}")
+        print(f"TP: {results['tp']}")
+        print(f"FP: {results['fp']}")
+        print(f"FN: {results['fn']}")
+        print(f"Precision: {results['precision']:.4f}")
+        print(f"Recall: {results['recall']:.4f}")
+        print(f"F1 score: {results['f1']:.4f}")
+        print(f"Mean IoU (matched TPs): {results['mean_iou']:.4f}")
+        print(f"Elapsed time (s): {elapsed_seconds:.2f}")
+        print(f"Throughput (img/s): {images_per_second:.2f}")
+
+    overall_elapsed_seconds = time.perf_counter() - overall_start
+    print(f"\nTotal elapsed time (s): {overall_elapsed_seconds:.2f}")
 
 
 if __name__ == "__main__":

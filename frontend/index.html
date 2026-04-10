@@ -11,14 +11,31 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="app-shell">
+    <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-3" aria-hidden="true"></div>
     <main class="container-fluid app-container py-4 py-lg-5">
         <section class="hero card border-0 shadow-lg mb-4">
             <div class="card-body p-4 p-lg-5">
                 <div class="d-flex flex-column flex-lg-row gap-4 align-items-lg-end justify-content-between">
                     <div class="hero-copy">
-                        <p class="eyebrow mb-2">TraktorOS</p>
+                        <p class="eyebrow mb-2">TraktorOS by undark</p>
                         <h1 class="display-5 mb-3">Vision console for image inspection</h1>
                         <p class="lead mb-0 text-body-secondary">Select an image, run detection, and compare the original and processed view side by side.</p>
+                    </div>
+                    <div class="hero-metrics">
+                        <div class="metric-pill">
+                            <span class="metric-label">Mode</span>
+                            <span id="activeModeBadge" class="metric-value">Local</span>
+                        </div>
+                        <div class="metric-pill">
+                            <span class="metric-label">Detections</span>
+                            <span id="detectionCountBadge" class="metric-value">0</span>
+                        </div>
+                        <div class="metric-pill metric-pill-wide">
+                            <span class="metric-label">Selected file</span>
+                            <span id="selectedFileMeta" class="metric-value">No image selected</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -29,10 +46,7 @@
                 <div class="col-12 col-xl-6 d-flex flex-column gap-4">
                     <article class="card panel-card border-0 shadow-sm flex-fill">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-                            <div class="d-flex align-items-center justify-content-between gap-3">
-                                <h2 class="h4 mb-0">Selected image</h2>
-                                <span id="selectedImageStatus" class="badge text-bg-light border">Waiting for upload</span>
-                            </div>
+                            <h2 class="h4 mb-0">Selected image</h2>
                         </div>
                         <div class="card-body p-3">
                             <label for="imageInput" class="preview-frame preview-picker">
@@ -59,9 +73,8 @@
                                                 <label class="btn btn-outline-primary" for="modeSagemaker">SageMaker</label>
                                             </div>
                                         </div>
-                                        <button id="uploadBtn" class="btn btn-primary btn-lg" disabled>Run detection</button>
-                                        <button id="bedrockBtn" class="btn btn-outline-primary btn-lg" disabled>Ask Bedrock</button>
-                                        <button id="localLlmBtn" class="btn btn-outline-primary btn-lg" disabled>Local Analysis</button>
+                                        <button id="uploadBtn" class="btn btn-outline-primary btn-lg" disabled>Realtime Analysis</button>
+                                        <button id="bedrockBtn" class="btn btn-primary btn-lg" disabled>Thorough Analysis</button>
                                     </div>
                                 </div>
                             </div>
@@ -70,15 +83,45 @@
 
                     <article class="card panel-card border-0 shadow-sm flex-fill">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-                            <div class="d-flex align-items-center justify-content-between gap-3">
-                                <h2 class="h4 mb-0">Free block</h2>
-                                <span class="badge text-bg-light border">Reserved</span>
-                            </div>
+                            <h2 class="h4 mb-0">Bedrock Analysis</h2>
                         </div>
                         <div class="card-body p-4 pt-3">
-                            <div class="empty-slot">
-                                <p class="mb-1 fw-semibold">Available for future content</p>
-                                <p class="mb-0 text-body-secondary">This block is intentionally left open for later use.</p>
+                            <div id="bedrockEmpty" class="empty-slot">
+                                <p class="mb-1 fw-semibold">No analysis yet</p>
+                                <p class="mb-0 text-body-secondary">Upload an image and click "Ask Bedrock" to get an AI scene analysis.</p>
+                            </div>
+                            <div id="bedrockSkeleton" class="bedrock-skeleton d-none" aria-live="polite" aria-label="Loading analysis">
+                                <div class="analysis-card placeholder-glow">
+                                    <div class="analysis-card-header">
+                                        <span class="placeholder col-4"></span>
+                                        <span class="placeholder col-2"></span>
+                                    </div>
+                                    <span class="placeholder col-10"></span>
+                                </div>
+                                <div class="analysis-card placeholder-glow">
+                                    <div class="analysis-card-header">
+                                        <span class="placeholder col-4"></span>
+                                        <span class="placeholder col-2"></span>
+                                    </div>
+                                    <span class="placeholder col-10"></span>
+                                </div>
+                                <div class="analysis-card placeholder-glow">
+                                    <div class="analysis-card-header">
+                                        <span class="placeholder col-4"></span>
+                                        <span class="placeholder col-2"></span>
+                                    </div>
+                                    <span class="placeholder col-10"></span>
+                                </div>
+                                <div class="analysis-card placeholder-glow">
+                                    <div class="analysis-card-header">
+                                        <span class="placeholder col-4"></span>
+                                        <span class="placeholder col-2"></span>
+                                    </div>
+                                    <span class="placeholder col-10"></span>
+                                </div>
+                            </div>
+                            <div id="bedrockResults" class="d-none">
+                                <div id="bedrockDetections" class="analysis-list"></div>
                             </div>
                         </div>
                     </article>
@@ -87,10 +130,7 @@
                 <div class="col-12 col-xl-6 d-flex flex-column gap-4">
                     <article class="card panel-card border-0 shadow-sm flex-fill">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-                            <div class="d-flex align-items-center justify-content-between gap-3">
-                                <h2 class="h4 mb-0">Processed image</h2>
-                                <span id="processedImageStatus" class="badge text-bg-light border">Waiting for processing</span>
-                            </div>
+                            <h2 class="h4 mb-0">Processed image</h2>
                         </div>
                         <div class="card-body p-3">
                             <div class="preview-frame">
@@ -107,6 +147,35 @@
                                 <canvas id="processedCanvas" class="preview-canvas d-none"></canvas>
                             </div>
                             <div class="px-4 pb-4 pt-3">
+                                <div class="accordion mb-3" id="pathSettingsAccordion">
+                                    <div class="accordion-item bg-transparent border">
+                                        <h3 class="accordion-header" id="pathSettingsHeading">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pathSettingsCollapse" aria-expanded="false" aria-controls="pathSettingsCollapse">
+                                                Tractor path settings
+                                            </button>
+                                        </h3>
+                                        <div id="pathSettingsCollapse" class="accordion-collapse collapse" aria-labelledby="pathSettingsHeading" data-bs-parent="#pathSettingsAccordion">
+                                            <div class="accordion-body pt-3">
+                                                <div class="mode-toggle mb-3">
+                                                    <span class="form-label mb-0 fw-semibold">Tractor width</span>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <input type="range" class="form-range flex-grow-1" id="tractorWidth" min="10" max="200" value="90">
+                                                        <span id="tractorWidthLabel" class="text-nowrap" style="min-width:3.5rem">90%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="mode-toggle">
+                                                    <span class="form-label mb-0 fw-semibold">Horizon line</span>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <input type="range" class="form-range flex-grow-1" id="horizonLine" min="5" max="80" value="36">
+                                                        <span id="horizonLineLabel" class="text-nowrap" style="min-width:3.5rem">36%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="qualityBanner" class="quality-banner d-none"></div>
+                                <h3 id="detectionInfoHeading" class="h6 mb-2 d-none">Detected objects</h3>
                                 <div id="detectionInfo" class="detection-info"></div>
                             </div>
                         </div>
@@ -115,22 +184,24 @@
                     <article class="card panel-card border-0 shadow-sm flex-fill">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
                             <div class="d-flex align-items-center justify-content-between gap-3">
-                                <h2 class="h4 mb-0">Bedrock Analysis</h2>
-                                <span id="bedrockStatus" class="badge text-bg-light border">Waiting</span>
+                                <h2 class="h4 mb-0">Mission notes</h2>
+                                <span class="badge text-bg-light border">Live</span>
                             </div>
                         </div>
                         <div class="card-body p-4 pt-3">
-                            <div id="bedrockSpinner" class="text-center py-4 d-none">
-                                <div class="spinner-border text-primary" role="status"></div>
-                                <p class="mb-0 mt-3 fw-semibold">Asking Bedrock…</p>
-                            </div>
-                            <div id="bedrockEmpty" class="empty-slot">
-                                <p class="mb-1 fw-semibold">No analysis yet</p>
-                                <p class="mb-0 text-body-secondary">Upload an image and click "Ask Bedrock" to get an AI scene analysis.</p>
-                            </div>
-                            <div id="bedrockResults" class="d-none">
-                                <p id="bedrockSummary" class="mb-3 text-body-secondary"></p>
-                                <div id="bedrockDetections" class="detection-info"></div>
+                            <div class="notes-block">
+                                <div class="note-item">
+                                    <h3>Pipeline</h3>
+                                    <p class="text-body-secondary mb-0">Upload, detect, and analyze with Bedrock or local LLM.</p>
+                                </div>
+                                <div class="note-item">
+                                    <h3>Detection recap</h3>
+                                    <p id="detectionSummary" class="text-body-secondary mb-0">No detections yet.</p>
+                                </div>
+                                <div class="note-item">
+                                    <h3>Best practice</h3>
+                                    <p class="text-body-secondary mb-0">Use sharp daylight images for improved confidence scores.</p>
+                                </div>
                             </div>
                         </div>
                     </article>
@@ -139,6 +210,7 @@
         </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
