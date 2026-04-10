@@ -4,6 +4,14 @@ A demo system for detecting humans in autonomous tractor field of view using PyT
 
 ## Architecture
 
+Two modes are available:
+
+**Local mode (pretrained)** — no AWS needed, great for demos:
+```
+User → Frontend → Local Flask Server → Pretrained Faster R-CNN
+```
+
+**SageMaker mode (custom trained)** — full AWS pipeline:
 ```
 User → Frontend → API Gateway → Lambda → SageMaker Endpoint → PyTorch Model
                                     ↓
@@ -12,6 +20,7 @@ User → Frontend → API Gateway → Lambda → SageMaker Endpoint → PyTorch 
 
 **Components:**
 - **Frontend**: HTML/CSS/JS for image upload and bounding box visualization
+- **Local Server**: Flask server running pretrained Faster R-CNN (COCO, already detects people)
 - **API Gateway + Lambda**: Lightweight proxy to SageMaker
 - **SageMaker**: Train and deploy PyTorch models
 - **S3**: Store training data and model artifacts
@@ -21,6 +30,8 @@ User → Frontend → API Gateway → Lambda → SageMaker Endpoint → PyTorch 
 
 ```
 .
+├── local_server.py          # Local inference server (pretrained model)
+├── requirements.txt         # Local server dependencies
 ├── frontend/
 │   ├── index.html           # Web interface
 │   ├── app.js               # Frontend logic
@@ -43,14 +54,25 @@ User → Frontend → API Gateway → Lambda → SageMaker Endpoint → PyTorch 
         └── annotations.json
 ```
 
-## Prerequisites
+## Quick Start (Local Pretrained Model)
+
+No AWS account needed. Uses Faster R-CNN pretrained on COCO (already detects people).
+
+```bash
+pip install -r requirements.txt
+python3 local_server.py
+```
+
+Then open `frontend/index.html` in your browser, select "Local (Pretrained)", and upload an image.
+
+## SageMaker Setup (Custom Trained Model)
+
+### Prerequisites
 
 1. **AWS Account** with SageMaker access
 2. **AWS CLI** configured with credentials
 3. **Python 3.9+** with pip
 4. **AWS SAM CLI** ([Installation Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html))
-
-## Setup Guide
 
 ### Step 1: Prepare Training Data
 
