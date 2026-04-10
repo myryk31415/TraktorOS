@@ -74,9 +74,9 @@ def main():
     #   │   └── image2.jpg
     #   └── annotations.json
     
-    training_dir = 'data/training'
+    training_dir = 'data'
     if os.path.exists(training_dir):
-        upload_directory(s3_client, training_dir, BUCKET_NAME, 'training')
+        upload_directory(s3_client, training_dir, BUCKET_NAME, 'data')
     else:
         print(f"\n⚠ Training directory '{training_dir}' not found")
         print("Please create it with the following structure:")
@@ -92,9 +92,9 @@ def main():
         }], indent=2))
         return
     
-    print(f"\n✓ All data uploaded to s3://{BUCKET_NAME}/training/")
+    print(f"\n✓ All data uploaded to s3://{BUCKET_NAME}/data/")
     print(f"\nUse this S3 path in your SageMaker training job:")
-    print(f"  s3://{BUCKET_NAME}/training/")
+    print(f"  s3://{BUCKET_NAME}/data/")
 
 if __name__ == '__main__':
     main()
