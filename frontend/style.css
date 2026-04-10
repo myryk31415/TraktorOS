@@ -348,6 +348,30 @@ body {
     line-height: 1.55;
 }
 
+#detectionInfoHeading {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8ef5e7;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.65rem !important;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(137, 200, 219, 0.22);
+}
+
+#detectionInfoHeading::before {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5eead4, #22d3ee);
+    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.16);
+}
+
 .detection-info .detection-item {
     display: flex;
     justify-content: space-between;

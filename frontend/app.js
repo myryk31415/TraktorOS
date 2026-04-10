@@ -12,6 +12,7 @@ const selectedImageEmptyState = document.getElementById('selectedImageEmptyState
 const processedCanvas = document.getElementById('processedCanvas');
 const processedPlaceholder = document.getElementById('processedImagePlaceholder');
 const processedSpinner = document.getElementById('processedSpinner');
+const detectionInfoHeading = document.getElementById('detectionInfoHeading');
 const detectionInfo = document.getElementById('detectionInfo');
 const canvas = processedCanvas;
 const ctx = canvas.getContext('2d');
@@ -335,6 +336,7 @@ function resetProcessedState() {
     processedCanvas.classList.add('d-none');
     processedPlaceholder.classList.remove('is-hidden');
     processedSpinner.classList.add('is-hidden');
+    if (detectionInfoHeading) detectionInfoHeading.classList.add('d-none');
     detectionInfo.innerHTML = '';
     ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
     const qb = document.getElementById('qualityBanner');
@@ -447,6 +449,10 @@ function displayResults(imageData, detections) {
         processedPlaceholder.classList.add('is-hidden');
         processedSpinner.classList.add('is-hidden');
         processedCanvas.classList.remove('d-none');
+        if (detectionInfoHeading) {
+            detectionInfoHeading.textContent = detections.length ? 'Detected objects' : 'Detection results';
+            detectionInfoHeading.classList.remove('d-none');
+        }
         if (detectionCountBadge) detectionCountBadge.textContent = String(detections.length);
         if (detectionSummary) detectionSummary.textContent = detections.length
             ? `Detected ${formatDetectionSummary(detections)} in the current frame.`
