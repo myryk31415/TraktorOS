@@ -26,8 +26,21 @@ const bedrockSkeleton = document.getElementById('bedrockSkeleton');
 const bedrockEmpty = document.getElementById('bedrockEmpty');
 const bedrockResults = document.getElementById('bedrockResults');
 const bedrockDetections = document.getElementById('bedrockDetections');
+const activeModeBadge = document.getElementById('activeModeBadge');
+const selectedFileMeta = document.getElementById('selectedFileMeta');
+const detectionCountBadge = document.getElementById('detectionCountBadge');
+const analysisStateBadge = document.getElementById('analysisStateBadge');
+const statusHint = document.getElementById('statusHint');
+const detectionSummary = document.getElementById('detectionSummary');
 
 uploadBtn.disabled = true;
+setInitialUiState();
+
+document.querySelectorAll('input[name="mode"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+        updateModeBadge();
+    });
+});
 
 imageInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -38,6 +51,11 @@ imageInput.addEventListener('change', async (e) => {
         uploadBtn.disabled = true;
         bedrockBtn.disabled = true;
         localLlmBtn.disabled = true;
+        if (statusHint) statusHint.textContent = 'Choose an image to start the pipeline.';
+        if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
+        if (detectionCountBadge) detectionCountBadge.textContent = '0';
+        if (selectedFileMeta) selectedFileMeta.textContent = 'No image selected';
+        if (detectionSummary) detectionSummary.textContent = 'No humans detected yet.';
         resetSelectedPreview();
         resetProcessedState();
         return;
@@ -47,6 +65,8 @@ imageInput.addEventListener('change', async (e) => {
     uploadBtn.disabled = false;
     bedrockBtn.disabled = false;
     localLlmBtn.disabled = false;
+    if (selectedFileMeta) selectedFileMeta.textContent = `${file.name} (${formatFileSize(file.size)})`;
+    if (statusHint) statusHint.textContent = 'Image loaded. Run detection or request analysis.';
 
     if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
@@ -67,6 +87,7 @@ uploadBtn.addEventListener('click', async () => {
     uploadBtn.disabled = true;
     imageInput.disabled = true;
     setProcessingState(true);
+    if (statusHint) statusHint.textContent = 'Running human detection...';
 
     try {
         const mode = document.querySelector('input[name="mode"]:checked').value;
@@ -83,10 +104,12 @@ uploadBtn.addEventListener('click', async () => {
         const result = await response.json();
 
         displayResults(selectedImageDataUrl, result.detections || []);
+        if (statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
         
     } catch (error) {
         console.error('Error:', error);
         alert('Error processing image. Please try again.');
+        if (statusHint) statusHint.textContent = 'Detection failed. Please retry with another image.';
         setProcessingState(false);
     } finally {
         imageInput.disabled = false;
@@ -102,6 +125,7 @@ async function runAnalysis(endpoint) {
     bedrockEmpty.classList.add('d-none');
     bedrockResults.classList.add('d-none');
     bedrockSkeleton.classList.remove('d-none');
+    if (analysisStateBadge) analysisStateBadge.textContent = 'Running';
 
     try {
         const response = await fetch(endpoint, {
@@ -130,12 +154,14 @@ async function runAnalysis(endpoint) {
 
         bedrockSkeleton.classList.add('d-none');
         bedrockResults.classList.remove('d-none');
+        if (analysisStateBadge) analysisStateBadge.textContent = 'Ready';
     } catch (error) {
         console.error('Analysis error:', error);
         bedrockSkeleton.classList.add('d-none');
         bedrockEmpty.querySelector('p').textContent = 'Analysis failed';
         bedrockEmpty.querySelector('.text-body-secondary').textContent = String(error.message || 'Please try again.');
         bedrockEmpty.classList.remove('d-none');
+        if (analysisStateBadge) analysisStateBadge.textContent = 'Error';
     } finally {
         bedrockBtn.disabled = !selectedImage;
         localLlmBtn.disabled = !selectedImage;
@@ -345,6 +371,10 @@ function displayResults(imageData, detections) {
         processedPlaceholder.classList.add('is-hidden');
         processedSpinner.classList.add('is-hidden');
         processedCanvas.classList.remove('d-none');
+        if (detectionCountBadge) detectionCountBadge.textContent = String(detections.length);
+        if (detectionSummary) detectionSummary.textContent = detections.length
+            ? `Detected ${detections.length} human${detections.length > 1 ? 's' : ''} in the current frame.`
+            : 'No humans detected in the latest run.';
         detectionInfo.innerHTML = detections.length
             ? detections.map((detection, index) => {
                 return `
@@ -357,4 +387,25 @@ function displayResults(imageData, detections) {
             : '<div class="text-body-secondary">No humans detected.</div>';
     };
     img.src = imageData;
+}
+
+function setInitialUiState() {
+    updateModeBadge();
+    if (analysisStateBadge) analysisStateBadge.textContent = 'Idle';
+    if (detectionCountBadge) detectionCountBadge.textContent = '0';
+}
+
+function updateModeBadge() {
+    const mode = document.querySelector('input[name="mode"]:checked')?.value || 'local';
+    if (!activeModeBadge) return;
+    activeModeBadge.textContent = mode === 'sagemaker' ? 'SageMaker' : 'Local';
+}
+
+function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const power = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const value = bytes / (1024 ** power);
+    return `${value.toFixed(power === 0 ? 0 : 1)} ${units[power]}`;
 }

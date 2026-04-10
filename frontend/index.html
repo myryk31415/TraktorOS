@@ -11,14 +11,35 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="app-shell">
+    <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-3" aria-hidden="true"></div>
     <main class="container-fluid app-container py-4 py-lg-5">
         <section class="hero card border-0 shadow-lg mb-4">
             <div class="card-body p-4 p-lg-5">
                 <div class="d-flex flex-column flex-lg-row gap-4 align-items-lg-end justify-content-between">
                     <div class="hero-copy">
-                        <p class="eyebrow mb-2">TraktorOS</p>
+                        <p class="eyebrow mb-2">TraktorOS by undark</p>
                         <h1 class="display-5 mb-3">Vision console for image inspection</h1>
                         <p class="lead mb-0 text-body-secondary">Select an image, run detection, and compare the original and processed view side by side.</p>
+                    </div>
+                    <div class="hero-metrics">
+                        <div class="metric-pill">
+                            <span class="metric-label">Mode</span>
+                            <span id="activeModeBadge" class="metric-value">Local</span>
+                        </div>
+                        <div class="metric-pill">
+                            <span class="metric-label">Detections</span>
+                            <span id="detectionCountBadge" class="metric-value">0</span>
+                        </div>
+                        <div class="metric-pill metric-pill-wide">
+                            <span class="metric-label">Selected file</span>
+                            <span id="selectedFileMeta" class="metric-value">No image selected</span>
+                        </div>
+                        <div class="metric-pill">
+                            <span class="metric-label">Analysis</span>
+                            <span id="analysisStateBadge" class="metric-value">Idle</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -56,6 +77,7 @@
                                                 <label class="btn btn-outline-primary" for="modeSagemaker">SageMaker</label>
                                             </div>
                                         </div>
+                                        <p id="statusHint" class="status-hint mb-0">Choose an image to start the pipeline.</p>
                                         <button id="uploadBtn" class="btn btn-primary btn-lg" disabled>Run detection</button>
                                         <button id="bedrockBtn" class="btn btn-outline-primary btn-lg" disabled>Ask Bedrock</button>
                                         <button id="localLlmBtn" class="btn btn-outline-primary btn-lg" disabled>Local Analysis</button>
@@ -139,14 +161,24 @@
                     <article class="card panel-card border-0 shadow-sm flex-fill">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
                             <div class="d-flex align-items-center justify-content-between gap-3">
-                                <h2 class="h4 mb-0">Free block</h2>
-                                <span class="badge text-bg-light border">Reserved</span>
+                                <h2 class="h4 mb-0">Mission notes</h2>
+                                <span class="badge text-bg-light border">Live</span>
                             </div>
                         </div>
                         <div class="card-body p-4 pt-3">
-                            <div class="empty-slot">
-                                <p class="mb-1 fw-semibold">Available for future content</p>
-                                <p class="mb-0 text-body-secondary">This block is intentionally left open for later use.</p>
+                            <div class="notes-block">
+                                <div class="note-item">
+                                    <h3>Pipeline</h3>
+                                    <p class="text-body-secondary mb-0">Upload, detect, and analyze with Bedrock or local LLM.</p>
+                                </div>
+                                <div class="note-item">
+                                    <h3>Detection recap</h3>
+                                    <p id="detectionSummary" class="text-body-secondary mb-0">No humans detected yet.</p>
+                                </div>
+                                <div class="note-item">
+                                    <h3>Best practice</h3>
+                                    <p class="text-body-secondary mb-0">Use sharp daylight images for improved confidence scores.</p>
+                                </div>
                             </div>
                         </div>
                     </article>
