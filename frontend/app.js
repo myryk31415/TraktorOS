@@ -14,6 +14,7 @@ const selectedImageEmptyState = document.getElementById('selectedImageEmptyState
 const processedCanvas = document.getElementById('processedCanvas');
 const processedPlaceholder = document.getElementById('processedImagePlaceholder');
 const processedSpinner = document.getElementById('processedSpinner');
+const depthMapAccordion = document.getElementById('depthMapAccordion');
 const detectionInfoHeading = document.getElementById('detectionInfoHeading');
 const detectionInfo = document.getElementById('detectionInfo');
 const canvas = processedCanvas;
@@ -361,6 +362,7 @@ function resetProcessedState() {
     processedCanvas.classList.add('d-none');
     processedPlaceholder.classList.remove('is-hidden');
     processedSpinner.classList.add('is-hidden');
+    if (depthMapAccordion) depthMapAccordion.classList.add('d-none');
     if (detectionInfoHeading) detectionInfoHeading.classList.add('d-none');
     detectionInfo.innerHTML = '';
     ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
@@ -479,6 +481,7 @@ function displayResults(imageData, detections) {
         processedPlaceholder.classList.add('is-hidden');
         processedSpinner.classList.add('is-hidden');
         processedCanvas.classList.remove('d-none');
+        if (depthMapAccordion) depthMapAccordion.classList.remove('d-none');
         if (detectionInfoHeading) {
             detectionInfoHeading.textContent = detections.length ? 'Detected objects' : 'Detection results';
             detectionInfoHeading.classList.remove('d-none');

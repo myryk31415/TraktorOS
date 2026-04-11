@@ -744,7 +744,8 @@ body {
     font-weight: 500;
 }
 
-#pathSettingsAccordion .accordion-item {
+#pathSettingsAccordion .accordion-item,
+#depthMapAccordion .accordion-item {
     border-radius: 14px;
     border: 1px solid rgba(137, 200, 219, 0.24) !important;
     overflow: hidden;
@@ -752,7 +753,8 @@ body {
     box-shadow: 0 14px 28px rgba(1, 11, 18, 0.28);
 }
 
-#pathSettingsAccordion .accordion-button {
+#pathSettingsAccordion .accordion-button,
+#depthMapAccordion .accordion-button {
     background: rgba(7, 21, 31, 0.72);
     color: #e6f7ff;
     border: 0;
@@ -764,21 +766,25 @@ body {
     padding: 0.8rem 1rem;
 }
 
-#pathSettingsAccordion .accordion-button:not(.collapsed) {
+#pathSettingsAccordion .accordion-button:not(.collapsed),
+#depthMapAccordion .accordion-button:not(.collapsed) {
     background: linear-gradient(135deg, rgba(94, 234, 212, 0.18), rgba(34, 211, 238, 0.12));
     color: #eaffff;
 }
 
-#pathSettingsAccordion .accordion-button:focus {
+#pathSettingsAccordion .accordion-button:focus,
+#depthMapAccordion .accordion-button:focus {
     box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.55);
 }
 
-#pathSettingsAccordion .accordion-button::after {
+#pathSettingsAccordion .accordion-button::after,
+#depthMapAccordion .accordion-button::after {
     filter: brightness(0) saturate(100%) invert(89%) sepia(22%) saturate(378%) hue-rotate(128deg) brightness(98%) contrast(96%);
     opacity: 0.9;
 }
 
-#pathSettingsAccordion .accordion-body {
+#pathSettingsAccordion .accordion-body,
+#depthMapAccordion .accordion-body {
     border-top: 1px solid rgba(137, 200, 219, 0.16);
     background: rgba(6, 22, 30, 0.52);
     padding: 0.95rem 1rem 1rem;

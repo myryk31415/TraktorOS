@@ -177,22 +177,26 @@
                                 <div id="qualityBanner" class="quality-banner d-none"></div>
                                 <h3 id="detectionInfoHeading" class="h6 mb-2 d-none">Detected objects</h3>
                                 <div id="detectionInfo" class="detection-info"></div>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="card panel-card border-0 shadow-sm flex-fill">
-                        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-                            <h2 class="h4 mb-0">Depth Map</h2>
-                        </div>
-                        <div class="card-body p-3">
-                            <div id="depthMapContainer" class="d-none">
-                                <img id="depthMapImage" class="preview-image" alt="Depth map" style="width:100%;border-radius:12px;">
-                            </div>
-                            <div id="depthMapEmpty" class="empty-slot">
-                                <p class="mb-1 fw-semibold">No depth map yet</p>
-                                <p class="mb-0 text-body-secondary">Run detection to generate a MiDaS depth estimate.</p>
-                            </div>
+                                <div class="accordion mt-3 d-none" id="depthMapAccordion">
+                                    <div class="accordion-item bg-transparent border">
+                                        <h3 class="accordion-header" id="depthMapHeading">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#depthMapCollapse" aria-expanded="false" aria-controls="depthMapCollapse">
+                                                View Estimated Depth Map
+                                            </button>
+                                        </h3>
+                                        <div id="depthMapCollapse" class="accordion-collapse collapse" aria-labelledby="depthMapHeading" data-bs-parent="#depthMapAccordion">
+                                            <div class="accordion-body pt-3">
+                                                <div id="depthMapContainer" class="d-none">
+                                                    <img id="depthMapImage" class="preview-image" alt="Depth map" style="width:100%;border-radius:12px;">
+                                                </div>
+                                                <div id="depthMapEmpty" class="empty-slot">
+                                                    <p class="mb-1 fw-semibold">No depth map yet</p>
+                                                    <p class="mb-0 text-body-secondary">Run detection to generate a MiDaS depth estimate.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </article>
