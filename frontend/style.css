@@ -358,9 +358,8 @@ body {
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    margin-bottom: 0.65rem !important;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(137, 200, 219, 0.22);
+    margin-bottom: 0.3rem !important;
+    padding-bottom: 0;
 }
 
 #detectionInfoHeading::before {
@@ -387,6 +386,37 @@ body {
 .detection-info .detection-label {
     color: #effdff;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.detection-info .proximity-badge {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border-radius: 999px;
+    padding: 0.22rem 0.5rem;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.detection-info .proximity-badge-far {
+    background: rgba(148, 163, 184, 0.2) !important;
+    color: #d1d5db !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+.detection-info .proximity-badge-medium {
+    background: rgba(245, 158, 11, 0.22) !important;
+    color: #fde68a !important;
+    border-color: rgba(245, 158, 11, 0.42) !important;
+}
+
+.detection-info .proximity-badge-near {
+    background: rgba(239, 68, 68, 0.22) !important;
+    color: #fecaca !important;
+    border-color: rgba(239, 68, 68, 0.42) !important;
 }
 
 .detection-info .detection-confidence {

@@ -490,9 +490,14 @@ function displayResults(imageData, detections) {
         detectionInfo.innerHTML = detections.length
             ? detections.map((detection, index) => {
                 const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
-                const proxColors = {NEAR:'text-bg-danger',MEDIUM:'text-bg-warning',FAR:'text-bg-success'};
-                const proxBadge = detection.proximity
-                    ? `<span class="badge ${proxColors[detection.proximity] || 'text-bg-secondary'}">${detection.proximity}</span>`
+                const proximityClassMap = {
+                    NEAR: 'proximity-badge-near',
+                    MEDIUM: 'proximity-badge-medium',
+                    FAR: 'proximity-badge-far'
+                };
+                const proximityText = String(detection.proximity || '').trim().toUpperCase();
+                const proxBadge = proximityText
+                    ? `<span class="badge proximity-badge ${proximityClassMap[proximityText] || 'proximity-badge-far'}">${escapeHtml(proximityText)}</span>`
                     : '';
                 return `
                     <div class="detection-item">
