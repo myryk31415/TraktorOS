@@ -132,8 +132,8 @@ BEDROCK_PROMPT = """Analyze this image from an autonomous tractor's camera. Resp
 
 {
   "image_quality": {
-    "sufficient_for_human_detection": true/false,
     "issues": ["list of quality issues if any, e.g. too dark (e.g. night), blurry, overexposed, dust, lense flair. If it is good, just return sufficient, if it is obscured, warn that the detection results may be unreliable."]
+    "sufficient": true/false, # if not sufficient, this should be false
   },
   "obstacles": [
     {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk. Max 8 words."}

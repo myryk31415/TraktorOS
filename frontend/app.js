@@ -302,8 +302,8 @@ function buildAnalysisCards(analysisData) {
 }
 
 function qualityStatus(imageQuality) {
-    if (imageQuality.sufficient_for_human_detection === true) return 'success';
-    if (imageQuality.sufficient_for_human_detection === false) return 'danger';
+    if (imageQuality.sufficient === true) return 'success';
+    if (imageQuality.sufficient === false) return 'danger';
     return 'info';
 }
 
