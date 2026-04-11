@@ -10,3 +10,5 @@ data/training
 
 /artifacts/
 data/
+
+*.pt
