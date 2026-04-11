@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from pathlib import Path
 from typing import Any
@@ -420,6 +421,8 @@ def main() -> None:
 
     train, val, test = build_coco_split_datasets()
 
+    result_rows: list[dict[str, Any]] = []
+
     device = torch.device(
         "cpu" if args.cpu else ("cuda" if torch.cuda.is_available() else "cpu")
     )
@@ -471,8 +474,50 @@ def main() -> None:
         print(f"Elapsed time (s): {elapsed_seconds:.2f}")
         print(f"Throughput (img/s): {images_per_second:.2f}")
 
+        result_rows.append(
+            {
+                "model": model_name,
+                "images_evaluated": results["images_evaluated"],
+                "tp": results["tp"],
+                "fp": results["fp"],
+                "fn": results["fn"],
+                "precision": results["precision"],
+                "recall": results["recall"],
+                "f1": results["f1"],
+                "mean_iou": results["mean_iou"],
+                "elapsed_seconds": elapsed_seconds,
+                "throughput_images_per_second": images_per_second,
+            }
+        )
+
     overall_elapsed_seconds = time.perf_counter() - overall_start
     print(f"\nTotal elapsed time (s): {overall_elapsed_seconds:.2f}")
+
+    results_dir = Path("results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    output_path = results_dir / "model_eval_results.json"
+
+    payload = {
+        "settings": {
+            "local": args.local,
+            "confidence_threshold": args.confidence_threshold,
+            "iou_threshold": args.iou_threshold,
+            "person_category_id": args.person_category_id,
+            "max_images": args.max_images,
+            "device": str(device),
+            "model_types": MODEL_TYPES,
+        },
+        "summary": {
+            "overall_elapsed_seconds": overall_elapsed_seconds,
+            "num_models": len(result_rows),
+        },
+        "models": result_rows,
+    }
+
+    with output_path.open("w", encoding="utf-8") as file_handle:
+        json.dump(payload, file_handle, indent=2)
+
+    print(f"Results written to: {output_path}")
 
 
 if __name__ == "__main__":
