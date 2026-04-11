@@ -1,7 +1,6 @@
 const API = location.protocol === 'file:' ? 'http://localhost:5000' : '';
 const ENDPOINTS = {
     local: `${API}/detect`,
-    sagemaker: 'YOUR_API_GATEWAY_URL',
     bedrock: `${API}/detect-bedrock`,
     quality: `${API}/quality`
 };
@@ -79,11 +78,11 @@ imageInput.addEventListener('change', async (e) => {
 });
 
 uploadBtn.addEventListener('click', async () => {
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-    await runOnDeviceAnalysis(ENDPOINTS[mode], mode);
+    const model = document.querySelector('input[name="model"]:checked').value;
+    await runOnDeviceAnalysis(ENDPOINTS.local, model);
 });
 
-async function runOnDeviceAnalysis(endpoint, mode) {
+async function runOnDeviceAnalysis(endpoint, model) {
     if (!selectedImage || !selectedImageDataUrl) return;
 
     uploadBtn.disabled = true;
@@ -91,7 +90,10 @@ async function runOnDeviceAnalysis(endpoint, mode) {
     setProcessingState(true);
 
     try {
-        const imagePayload = JSON.stringify({ image: selectedImageDataUrl.split(',')[1] });
+        const imagePayload = JSON.stringify({
+            image: selectedImageDataUrl.split(',')[1],
+            model
+        });
 
         // Run detection and quality check in parallel
         const [detectionRes, qualityRes] = await Promise.all([
@@ -151,7 +153,7 @@ async function runOnDeviceAnalysis(endpoint, mode) {
         
     } catch (error) {
         console.error('Detection error:', error);
-        let msg = `Detection failed (${mode} mode):\n\n${error.message}`;
+        let msg = `Detection failed (${model}):\n\n${error.message}`;
         if (error.message === 'Failed to fetch') {
             msg += `\n\nCannot reach server at ${endpoint}. Is the backend running?`;
         }
@@ -340,9 +342,10 @@ function escapeHtml(value) {
 }
 
 bedrockBtn.addEventListener('click', async () => {
+    const model = document.querySelector('input[name="model"]:checked').value;
     await Promise.all([
         runAnalysis(ENDPOINTS.bedrock),
-        runOnDeviceAnalysis(ENDPOINTS.local, 'local')
+        runOnDeviceAnalysis(ENDPOINTS.local, model)
     ]);
 });
 
