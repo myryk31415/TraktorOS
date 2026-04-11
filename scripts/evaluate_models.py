@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from torch.utils.data import ConcatDataset
 from PIL import Image, ImageDraw
 from torchvision.models.detection import (
     FasterRCNN_ResNet50_FPN_Weights,
@@ -18,18 +19,19 @@ from torchvision.models.detection import (
 from rfdetr import RFDETRLarge, RFDETRSmall
 from ultralytics import YOLO
 
-from coco_dataset import CocoDetectionDataset
+from generate_datasplit import build_coco_split_datasets
 
 import boto3
 
 BUCKET_NAME = "traktoros-training-data"
 
 MODEL_TYPES = [
-    # "fasterrcnn",
+    "fasterrcnn",
     "fasterrcnn_v2",
-    # "rfdetr-large",
-    # "rfdetr-small",
-    # "yolo11-x",
+    "rfdetr-large",
+    "rfdetr-small",
+    "yolo11-x",
+    "yolo11-s"
 ]
 
 
@@ -85,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-images",
         type=int,
-        default=200,
+        default=2,
         help="Optional cap for quick evaluation runs.",
     )
     parser.add_argument(
@@ -183,6 +185,14 @@ def init_model(model_name: str, device: torch.device) -> Any:
         except Exception:
             pass
         return model
+            
+    if model_name == "yolo11-s":
+        model = YOLO("yolo11s.pt")
+        try:
+            model.to(str(device))
+        except Exception:
+            pass
+        return model
 
     raise ValueError(f"Unsupported model type: {model_name}")
 
@@ -218,6 +228,13 @@ def prediction_to_tensors(
         return boxes, labels, scores
 
     if model_name == "yolo11-x":
+        result = model.predict(source=image_np, conf=confidence_threshold, verbose=False)[0]
+        boxes = result.boxes.xyxy.detach().cpu().to(dtype=torch.float32)
+        labels = result.boxes.cls.detach().cpu().to(dtype=torch.int64)
+        scores = result.boxes.conf.detach().cpu().to(dtype=torch.float32)
+        return boxes, labels, scores
+
+    if model_name == "yolo11-s":
         result = model.predict(source=image_np, conf=confidence_threshold, verbose=False)[0]
         boxes = result.boxes.xyxy.detach().cpu().to(dtype=torch.float32)
         labels = result.boxes.cls.detach().cpu().to(dtype=torch.int64)
@@ -294,8 +311,7 @@ def greedy_match(
 def evaluate(
     model: Any,
     model_name: str,
-    annotation_files: list[Path],
-    image_root: Path,
+    dataset: ConcatDataset,
     device: torch.device,
     confidence_threshold: float,
     iou_threshold: float,
@@ -315,8 +331,6 @@ def evaluate(
     all_matched_ious: list[float] = []
 
     with torch.no_grad():
-        for annotation_file in annotation_files:
-            dataset = CocoDetectionDataset(annotation_file=annotation_file, image_root=image_root, is_local=False)
 
             for image_index, (image_tensor, target) in enumerate(dataset):
                 if max_images is not None and total_images >= max_images:
@@ -349,25 +363,22 @@ def evaluate(
                 total_fn += fn
                 all_matched_ious.extend(matched_ious)
 
-                if verbose and (fp > 0 or fn > 0):
-                    image_info = dataset._images[image_index]
-                    image_title = f"image_id={int(image_info['id'])} fp={fp} tp={tp} fn={fn}"
-                    output_path = fail_dir / (
-                        f"{Path(annotation_file).stem}_img{int(image_info['id'])}_"
-                        f"idx{total_images}_fp{fp}_fn{fn}.png"
-                    )
-                    visualize_detections(
-                        image_tensor=image_tensor,
-                        gt_boxes=gt_boxes,
-                        pred_boxes=filtered_pred_boxes,
-                        image_title=image_title,
-                        output_path=output_path,
-                    )
+                # if verbose and (fp > 0 or fn > 0):
+                #     image_info = dataset._images[image_index]
+                #     image_title = f"image_id={int(image_info['id'])} fp={fp} tp={tp} fn={fn}"
+                #     output_path = fail_dir / (
+                #         f"{Path(annotation_file).stem}_img{int(image_info['id'])}_"
+                #         f"idx{total_images}_fp{fp}_fn{fn}.png"
+                #     )
+                #     visualize_detections(
+                #         image_tensor=image_tensor,
+                #         gt_boxes=gt_boxes,
+                #         pred_boxes=filtered_pred_boxes,
+                #         image_title=image_title,
+                #         output_path=output_path,
+                #     )
 
                 total_images += 1
-
-            if max_images is not None and total_images >= max_images:
-                break
 
     precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
     recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0.0
@@ -407,27 +418,13 @@ def get_all_s3_keys(prefix):
 def main() -> None:
     args = parse_args()
 
-    if args.local:
-        dataset_root = args.dataset_root
-        annotation_root = args.annotation_root or (dataset_root / "annotation")
-        image_root = args.image_root or (dataset_root / "data")
-
-        annotation_files = validate_inputs(
-            annotation_root=annotation_root,
-            image_root=image_root,
-        )
-    else:
-        annotation_root = "data/HackHPI2026_release/annotation/"
-        image_root = "data/HackHPI2026_release/data/"
-
-        annotation_files = get_all_s3_keys(annotation_root)
+    train, val, test = build_coco_split_datasets()
 
     device = torch.device(
         "cpu" if args.cpu else ("cuda" if torch.cuda.is_available() else "cpu")
     )
     print(f"Device: {device}")
-    print(f"Annotations found: {len(annotation_files)}")
-    print(f"Image root: {image_root}")
+    print(f"Number of test files: {len(test)}")
     print(f"Confidence threshold: {args.confidence_threshold}")
     print(f"IoU threshold: {args.iou_threshold}")
     if args.person_category_id < 0:
@@ -446,8 +443,7 @@ def main() -> None:
         results = evaluate(
             model=model,
             model_name=model_name,
-            annotation_files=annotation_files,
-            image_root=image_root,
+            dataset=test,
             device=device,
             confidence_threshold=args.confidence_threshold,
             iou_threshold=args.iou_threshold,
