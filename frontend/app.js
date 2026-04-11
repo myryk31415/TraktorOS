@@ -276,7 +276,7 @@ function buildAnalysisCards(analysisData) {
             key: 'summary',
             icon: 'icons/book-outline.svg',
             title: 'Summary',
-            status: obstacleStatus(obstacles),
+            status: 'info',
             description: summaryText || 'No summary reported.'
         }
     ];
