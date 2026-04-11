@@ -24,6 +24,7 @@ let previewObjectUrl = null;
 let lastDetections = [];
 let lastImageData = null;
 let lastQualityData = null;
+let lastBedrockData = null;
 
 const tractorWidthSlider = document.getElementById('tractorWidth');
 const tractorWidthLabel = document.getElementById('tractorWidthLabel');
@@ -197,9 +198,13 @@ async function runAnalysis(endpoint) {
         };
 
         bedrockDetections.innerHTML = buildAnalysisCards(analysisData);
+        lastBedrockData = analysisData;
 
         bedrockSkeleton.classList.add('d-none');
         bedrockResults.classList.remove('d-none');
+
+        // Recompute actions with Bedrock data
+        computeActions(lastDetections, lastQualityData);
     } catch (error) {
         console.error('Analysis error:', error);
         bedrockSkeleton.classList.add('d-none');
@@ -696,6 +701,29 @@ function computeActions(detections, qualityData) {
     }
     if (!shouldStop && !shouldHonk && !correctLeft && !correctRight) {
         actions.push({ icon: 'icons/checkmark-outline.svg', title: 'CONTINUE', status: 'success', description: 'Path is clear' });
+    }
+
+    // Bedrock-derived actions
+    if (lastBedrockData) {
+        const ground = lastBedrockData.groundAssessment || {};
+        const path = lastBedrockData.pathAnalysis || {};
+        const maint = lastBedrockData.maintenance || {};
+
+        if (ground.safety_to_traverse === 'unsafe') {
+            actions.push({ icon: 'icons/close-outline.svg', title: 'STOP', status: 'danger', description: `Unsafe ground: ${(ground.hazards || []).join(', ') || ground.surface_type || 'hazardous terrain'}` });
+        } else if (ground.safety_to_traverse === 'caution') {
+            actions.push({ icon: 'icons/alert-outline.svg', title: 'CAUTION', status: 'warning', description: `Ground conditions: ${(ground.hazards || []).join(', ') || ground.surface_type}` });
+        }
+
+        if (path.turn_ahead && path.path_type && path.path_type !== 'none') {
+            const dir = path.turn_direction && path.turn_direction !== 'none' ? ` ${path.turn_direction}` : '';
+            actions.push({ icon: 'icons/alert-outline.svg', title: `TURN${dir.toUpperCase()}`, status: path.turn_distance === 'immediate' ? 'danger' : 'warning', description: path.description || `Turn${dir} ahead` });
+        }
+
+        const maintDesc = (maint.description || '').toLowerCase();
+        if (maintDesc && maintDesc !== 'none') {
+            actions.push({ icon: 'icons/alert-outline.svg', title: 'MAINTENANCE', status: 'info', description: maint.description });
+        }
     }
 
     const html = actions.map(a => `
