@@ -27,6 +27,13 @@ jobs:
             if [ "$OLD_REQ" != "$NEW_REQ" ]; then
               pip3 install -r requirements.txt
             fi
+            cat > ~/.traktoros-env << 'ENVEOF'
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
+            AWS_DEFAULT_REGION=us-west-2
+            ENVEOF
+            chmod 600 ~/.traktoros-env
             sudo cp nginx.conf /etc/nginx/conf.d/traktoros.conf
             sudo rm -f /etc/nginx/conf.d/default.conf
             sudo sed -i '/^    server {/,/^    }/s/^/# /' /etc/nginx/nginx.conf
