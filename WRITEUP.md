@@ -4,6 +4,10 @@
 
 ---
 
+**Code**: [https://github.com/myryk31415/TraktorOS](https://github.com/myryk31415/TraktorOS) **Live demo**: [http://34.210.69.60](http://34.210.69.60)
+
+---
+
 ## 1. Overview
 
 #FIXME
@@ -111,28 +115,7 @@ User → nginx (:80) → Static Frontend (HTML/CSS/JS)
 
 ---
 
-## 4. Innovation & Future Vision
-
-### Edge Deployment
-The decision tree is pure JavaScript running client-side — it requires zero additional resources. On a real harvester, the detection models run on an onboard GPU (e.g., NVIDIA Jetson), while the decision tree runs on the vehicle's main controller. The Bedrock analysis would only be used when connectivity is available, as a secondary validation layer.
-
-### Handling False Positives
-Our multi-layered approach inherently reduces false positive impact:
-- The **depth estimation** layer filters out detections that are far away and not in the path
-- The **path corridor** ignores objects outside the tractor's trajectory
-- The **decision tree** differentiates between moving and stationary objects — a scarecrow (stationary, not moving) gets a steering correction rather than an emergency stop
-- The **quality gate** prevents decisions based on degraded sensor input
-
-### Beyond Human Detection
-The system already detects vehicles, animals, and obstacles. The Bedrock analysis adds ground assessment and maintenance detection. Future extensions:
-- **Crop health monitoring** using the same camera feed
-- **Fence line detection** for autonomous boundary following
-- **Weather condition assessment** for operational decisions
-- **Fleet coordination** — sharing detected hazards across multiple machines
-
----
-
-## 5. Evaluation
+## 4. Evaluation
 
 ### Detection Performance
 We use pretrained models (Faster R-CNN on COCO, YOLO11x) which provide strong baseline performance on person detection. The COCO-pretrained Faster R-CNN achieves ~37.9 mAP on the COCO validation set, with person detection being one of its strongest categories.
@@ -155,18 +138,21 @@ The decision tree is deterministic and auditable. Every action can be traced bac
 
 ---
 
-## 6. Code
+## 5. Innovation & Future Vision
 
-All code is publicly available: [https://github.com/myryk31415/TraktorOS](https://github.com/myryk31415/TraktorOS)
+### Edge Deployment
+The decision tree is pure JavaScript running client-side — it requires zero additional resources. On a real harvester, the detection models run on an onboard GPU (e.g., NVIDIA Jetson), while the decision tree runs on the vehicle's main controller. The Bedrock analysis would only be used when connectivity is available, as a secondary validation layer.
 
-**Live demo**: [http://34.210.69.60](http://34.210.69.60)
+### Handling False Positives
+Our multi-layered approach inherently reduces false positive impact:
+- The **depth estimation** layer filters out detections that are far away and not in the path
+- The **path corridor** ignores objects outside the tractor's trajectory
+- The **decision tree** differentiates between moving and stationary objects — a scarecrow (stationary, not moving) gets a steering correction rather than an emergency stop
+- The **quality gate** prevents decisions based on degraded sensor input
 
----
-
-## 7. Key Takeaways
-
-1. **Detection alone is not enough** — a safety system needs to translate detections into actions
-2. **Depth matters** — knowing an object is 50m away vs 2m away completely changes the required response
-3. **Quality gates save lives** — if you can't trust your sensors, stop the machine
-4. **Multi-modal analysis** adds context that pure CV cannot provide (ground conditions, maintenance needs)
-5. **Deployability matters** — our system runs on standard AWS infrastructure with automated deployment, not just in a notebook
+### Beyond Human Detection
+The system already detects vehicles, animals, and obstacles. The Bedrock analysis adds ground assessment and maintenance detection. Future extensions:
+- **Crop health monitoring** using the same camera feed
+- **Fence line detection** for autonomous boundary following
+- **Weather condition assessment** for operational decisions
+- **Fleet coordination** — sharing detected hazards across multiple machines
