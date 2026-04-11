@@ -141,6 +141,7 @@ async function runOnDeviceAnalysis(endpoint, mode) {
         }
 
         displayResults(selectedImageDataUrl, result.detections || []);
+        computeActions(result.detections || []);
 
         // Show depth map if available
         const depthContainer = document.getElementById('depthMapContainer');
@@ -572,4 +573,125 @@ function formatQualityMetrics(metrics) {
             `).join('')}
         </span>
     `;
+}
+
+const MOVING_CLASSES = new Set(['person', 'bicycle', 'car', 'motorcycle', 'truck', 'dog', 'horse', 'sheep', 'cow', 'bird']);
+
+function computeActions(detections) {
+    const actionsEmpty = document.getElementById('actionsEmpty');
+    const actionsResults = document.getElementById('actionsResults');
+    const actionsList = document.getElementById('actionsList');
+
+    if (!detections.length) {
+        actionsEmpty?.classList.remove('d-none');
+        actionsResults?.classList.add('d-none');
+        return;
+    }
+
+    const tractorW = parseInt(document.getElementById('tractorWidth')?.value || 90) / 100;
+    const horizonPct = parseInt(document.getElementById('horizonLine')?.value || 36) / 100;
+    // We need image dimensions — grab from last canvas
+    const canvas = document.getElementById('processedCanvas');
+    const imgW = canvas?.width || 1;
+    const imgH = canvas?.height || 1;
+    const horizonY = imgH * horizonPct;
+    const cx = imgW / 2;
+    const bottomW = imgW * tractorW;
+    const corridor = { horizonY, centerX: cx, bottomLeft: cx - bottomW / 2, bottomRight: cx + bottomW / 2, imageHeight: imgH };
+
+    let shouldStop = false;
+    let shouldHonk = false;
+    let correctLeft = false;
+    let correctRight = false;
+    const reasons = [];
+
+    detections.forEach(det => {
+        const cls = (det.class || 'object').toLowerCase();
+        const prox = (det.proximity || '').toUpperCase();
+        const isMoving = MOVING_CLASSES.has(cls);
+        const inPath = isDetectionInCorridor(det.bbox, corridor);
+        const [x1, , x2] = det.bbox;
+        const centerX = (x1 + x2) / 2;
+        const isLeftSide = centerX < cx;
+        const name = formatDetectionClass(cls);
+
+        if (isMoving) {
+            if (prox === 'VERY CLOSE' || prox === 'NEAR') {
+                shouldStop = true;
+                reasons.push(`🛑 Stop — ${name} very close`);
+            } else if (prox === 'NEARBY' || prox === 'MEDIUM') {
+                shouldHonk = true;
+                reasons.push(`📢 Honk — ${name} nearby`);
+            }
+            // FAR → no action for moving objects
+        } else {
+            // Stationary object
+            if (!inPath) {
+                // Not in path → continue (handled at end)
+            } else if (prox === 'VERY CLOSE' || prox === 'NEAR') {
+                shouldStop = true;
+                reasons.push(`🛑 Stop — ${name} in path, very close`);
+            } else if (prox === 'NEARBY' || prox === 'MEDIUM') {
+                if (isLeftSide) {
+                    correctRight = true;
+                    reasons.push(`➡️ Correct right — ${name} in path (left side)`);
+                } else {
+                    correctLeft = true;
+                    reasons.push(`⬅️ Correct left — ${name} in path (right side)`);
+                }
+            } else {
+                // FAR + in path
+                shouldStop = true;
+                reasons.push(`🛑 Stop — ${name} in path ahead`);
+            }
+        }
+    });
+
+    // If corrections in both directions → stop instead
+    if (correctLeft && correctRight) {
+        shouldStop = true;
+        reasons.push('🛑 Stop — obstacles on both sides, cannot dodge');
+    }
+
+    const actions = [];
+    if (shouldStop) {
+        actions.push({ icon: 'icons/close-outline.svg', title: 'STOP', status: 'danger', description: 'Immediate stop required' });
+    }
+    if (shouldHonk) {
+        actions.push({ icon: 'icons/alert-outline.svg', title: 'HONK', status: 'warning', description: 'Alert nearby moving object' });
+    }
+    if (!shouldStop && correctLeft && !correctRight) {
+        actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT LEFT', status: 'warning', description: 'Steer left to avoid obstacle' });
+    }
+    if (!shouldStop && correctRight && !correctLeft) {
+        actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT RIGHT', status: 'warning', description: 'Steer right to avoid obstacle' });
+    }
+    if (!shouldStop && !shouldHonk && !correctLeft && !correctRight) {
+        actions.push({ icon: 'icons/checkmark-outline.svg', title: 'CONTINUE', status: 'success', description: 'Path is clear' });
+    }
+
+    const html = actions.map(a => `
+        <div class="analysis-card">
+            <div class="analysis-card-header">
+                <div class="analysis-card-title-wrap">
+                    <span class="analysis-card-left-icon" aria-hidden="true">
+                        <img src="${a.icon}" alt="" aria-hidden="true">
+                    </span>
+                    <h3 class="analysis-card-title">${a.title}</h3>
+                </div>
+                <span class="analysis-status-icon status-${a.status}" aria-hidden="true">
+                    <img src="${a.status === 'danger' ? 'icons/close-outline.svg' : a.status === 'warning' ? 'icons/alert-outline.svg' : 'icons/checkmark-outline.svg'}" alt="" aria-hidden="true" style="transform: scale(1.3);">
+                </span>
+            </div>
+            <p class="analysis-card-description">${a.description}</p>
+        </div>
+    `).join('') + `
+        <div class="analysis-card" style="margin-top:0.5rem">
+            <p class="analysis-card-description" style="margin:0;font-size:0.85rem;opacity:0.8">${reasons.length ? reasons.join('<br>') : 'No objects detected in or near path.'}</p>
+        </div>
+    `;
+
+    actionsList.innerHTML = html;
+    actionsEmpty?.classList.add('d-none');
+    actionsResults?.classList.remove('d-none');
 }
