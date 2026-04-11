@@ -24,7 +24,16 @@ The entire system is deployed on AWS EC2 with a web-based dashboard, CI/CD via G
 
 ## 2. Technical Approach
 
-### 2.1 Detection Pipeline
+### 2.1 Image Quality Gate
+
+Before trusting any detection, we assess image quality using:
+- **Laplacian variance** for blur/sharpness detection
+- **BRISQUE** (Blind/Referenceless Image Spatial Quality Evaluator) for perceptual quality
+- **NIMA** (Neural Image Assessment) for aesthetic/technical quality
+
+If quality is insufficient, the system recommends STOP — because unreliable sensor data means unreliable decisions.
+
+### 2.2 Detection Pipeline
 
 Detecting humans in digital images is a complex computer vision challenge that requires to utilize both spatial localization and object classification. In machine learning, this problem is generally approached through two distinct architectures: one-step detectors (mapping raw pixels directly to labeled bounding boxes) and two-step detectors (proposing regions of interest before classifying them).
 
@@ -38,15 +47,15 @@ Furthermore, contrary to the general expectation that two-step architectures are
 Based on this superior balance of accuracy and speed, we have selected Faster R-CNN ResNet-50 as our primary model.
 Both run locally on the machine with no external API calls, ensuring data stays within the vehicle as required.
 
-### 2.2 Depth Estimation
+### 2.3 Depth Estimation
 
 **MiDaS** provides monocular depth estimation for every frame. For each detected object, we sample the depth in the lower half of the bounding box (feet/base area) and classify proximity
 
-### 2.3 Tractor Path Modeling
+### 2.4 Tractor Path Modeling
 
 The UI provides a configurable perspective trapezoid representing the tractor's forward path, defined by `Tractor width` and `Horizon line`. The calculated path is used to determine the relevance of detected objects for the navigation.
 
-### 2.4 Action Decision Tree
+### 2.5 Action Decision Tree
 
 The core innovation is a deterministic decision tree that translates detections into concrete tractor commands. The logic is built around two key insights about object behavior:
 
@@ -56,7 +65,7 @@ The core innovation is a deterministic decision tree that translates detections 
 
 Additional rules ensure safe behavior in edge cases: if the image quality is too poor to trust detections, we stop. If obstacles block both sides so we cannot dodge, we stop.
 
-### 2.5 Thorough Analysis (Amazon Bedrock)
+### 2.6 Thorough Analysis (Amazon Bedrock)
 
 For deeper scene understanding, we use Amazon Bedrock's Nova Pro model to analyze:
 
@@ -65,15 +74,6 @@ For deeper scene understanding, we use Amazon Bedrock's Nova Pro model to analyz
 - **Maintenance detection**: Overhanging branches, damaged fences, blocked drainage, erosion — issues requiring farmer attention
 
 These results feed back into the action recommendations: unsafe ground triggers STOP, detected turns generate TURN actions, and maintenance items are flagged.
-
-### 2.6 Image Quality Gate
-
-Before trusting any detection, we assess image quality using:
-- **Laplacian variance** for blur/sharpness detection
-- **BRISQUE** (Blind/Referenceless Image Spatial Quality Evaluator) for perceptual quality
-- **NIMA** (Neural Image Assessment) for aesthetic/technical quality
-
-If quality is insufficient, the system recommends STOP — because unreliable sensor data means unreliable decisions.
 
 ---
 
