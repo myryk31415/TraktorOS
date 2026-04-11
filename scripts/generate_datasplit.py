@@ -1,6 +1,11 @@
 import boto3
 import json
 import random
+from pathlib import Path
+
+from torch.utils.data import ConcatDataset
+
+from coco_dataset import CocoDetectionDataset
 
 BUCKET_NAME = "traktoros-training-data"
 
@@ -120,9 +125,52 @@ def generate_annotation_split():
     total = n_train + n_val + n_test
     print(f"Train: {len(train)} scenes, {n_train} images ({n_train/total:.1%})")
     print(f"Val:   {len(val)} scenes,  {n_val} images ({n_val/total:.1%})")
-    print(f"Test:  {len(test)} scenes, {n_test} images ({n_test/total:.1%})")``
+    print(f"Test:  {len(test)} scenes, {n_test} images ({n_test/total:.1%})")
 
     return train, val, test
+
+
+def _scene_name_to_annotation_file(scene_name: str) -> str:
+    """Convert scene key to expected COCO annotation key/file path."""
+    return scene_name.replace("/data/", "/annotation/", 1) + "_11.json"
+
+
+def build_coco_split_datasets(
+    image_root: str | Path = "data/HackHPI2026_release/data",
+    is_local: bool = True,
+) -> tuple[ConcatDataset, ConcatDataset, ConcatDataset]:
+    """Build joined train/val/test datasets from `generate_annotation_split`.
+
+    Returns:
+        (train_dataset, val_dataset, test_dataset) where each element is a
+        `ConcatDataset` over all scenes in that split.
+    """
+    train_split, val_split, test_split = generate_annotation_split()
+
+    image_root_path = Path(image_root)
+
+    def _build_split(split_scenes: list[tuple[str, int]]) -> ConcatDataset:
+        datasets = []
+        for scene_name, _scene_image_count in split_scenes:
+            annotation_file = _scene_name_to_annotation_file(scene_name)
+            datasets.append(
+                CocoDetectionDataset(
+                    annotation_file=annotation_file,
+                    image_root=image_root_path,
+                    is_local=is_local,
+                )
+            )
+
+        if not datasets:
+            raise ValueError("Split produced no datasets. Check annotation split configuration.")
+
+        return ConcatDataset(datasets)
+
+    train_dataset = _build_split(train_split)
+    val_dataset = _build_split(val_split)
+    test_dataset = _build_split(test_split)
+
+    return train_dataset, val_dataset, test_dataset
 
 
 def split_scenes(info_dict, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1):
@@ -147,4 +195,7 @@ def split_scenes(info_dict, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1):
     return splits["train"], splits["val"], splits["test"]
     
 if __name__ == "__main__":
-   pass 
+    train, val, test = build_coco_split_datasets()
+    print(f"Train dataset: {len(train)} images")
+    print(f"Val dataset: {len(val)} images")
+    print(f"Test dataset: {len(test)} images")
