@@ -1,8 +1,9 @@
+const API = location.protocol === 'file:' ? 'http://localhost:5000' : '';
 const ENDPOINTS = {
-    local: 'http://localhost:5000/detect',
+    local: `${API}/detect`,
     sagemaker: 'YOUR_API_GATEWAY_URL',
-    bedrock: 'http://localhost:5000/detect-bedrock',
-    quality: 'http://localhost:5000/quality'
+    bedrock: `${API}/detect-bedrock`,
+    quality: `${API}/quality`
 };
 
 const imageInput = document.getElementById('imageInput');
@@ -12,6 +13,7 @@ const selectedImageEmptyState = document.getElementById('selectedImageEmptyState
 const processedCanvas = document.getElementById('processedCanvas');
 const processedPlaceholder = document.getElementById('processedImagePlaceholder');
 const processedSpinner = document.getElementById('processedSpinner');
+const depthMapAccordion = document.getElementById('depthMapAccordion');
 const detectionInfoHeading = document.getElementById('detectionInfoHeading');
 const detectionInfo = document.getElementById('detectionInfo');
 const canvas = processedCanvas;
@@ -115,6 +117,11 @@ uploadBtn.addEventListener('click', async () => {
             }).catch(() => null)
         ]);
 
+        if (!detectionRes.ok) {
+            const text = await detectionRes.text();
+            throw new Error(`Server returned ${detectionRes.status}: ${text.slice(0, 200)}`);
+        }
+
         const result = await detectionRes.json();
 
         // Show quality banner
@@ -145,10 +152,25 @@ uploadBtn.addEventListener('click', async () => {
         }
 
         displayResults(selectedImageDataUrl, result.detections || []);
+
+        // Show depth map if available
+        const depthContainer = document.getElementById('depthMapContainer');
+        const depthImg = document.getElementById('depthMapImage');
+        if (result.depth_map && depthContainer && depthImg) {
+            depthImg.src = 'data:image/png;base64,' + result.depth_map;
+            depthContainer.classList.remove('d-none');
+            document.getElementById('depthMapEmpty')?.classList.add('d-none');
+        }
+        if (typeof statusHint !== 'undefined' && statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
         
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error processing image. Please try again.');
+        console.error('Detection error:', error);
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        let msg = `Detection failed (${mode} mode):\n\n${error.message}`;
+        if (error.message === 'Failed to fetch') {
+            msg += `\n\nCannot reach server at ${ENDPOINTS[mode]}. Is the backend running?`;
+        }
+        alert(msg);
         setProcessingState(false);
     } finally {
         imageInput.disabled = false;
@@ -182,7 +204,7 @@ async function runAnalysis(endpoint) {
 
         const analysisData = {
             imageQuality: result.image_quality || {},
-            soilAssessment: result.soil_assessment || {},
+            groundAssessment: result.ground_assessment || {},
             obstacles: Array.isArray(result.obstacles) ? result.obstacles : [],
             summary: result.summary || ''
         };
@@ -205,7 +227,7 @@ async function runAnalysis(endpoint) {
 function buildAnalysisCards(analysisData) {
     const iconPath = 'icons/image-outline.svg';
     const quality = analysisData.imageQuality || {};
-    const soil = analysisData.soilAssessment || {};
+    const ground = analysisData.groundAssessment || {};
     const obstacles = Array.isArray(analysisData.obstacles) ? analysisData.obstacles : [];
     const summaryText = analysisData.summary || '';
 
@@ -216,9 +238,9 @@ function buildAnalysisCards(analysisData) {
             ? 'Image quality is sufficient for object detection.'
             : 'No image quality details reported.';
 
-    const soilConcerns = Array.isArray(soil.concerns) ? soil.concerns.filter(Boolean) : [];
-    const soilBase = [soil.condition, soil.traversability].filter(Boolean).join(' / ');
-    const soilDescription = [soilBase, soilConcerns.join(', ')].filter(Boolean).join(' - ') || 'No soil assessment reported.';
+    const groundHazards = Array.isArray(ground.hazards) ? ground.hazards.filter(Boolean) : [];
+    const groundBase = [ground.surface_type, ground.safety_to_traverse].filter(Boolean).join(' / ');
+    const groundDescription = [groundBase, groundHazards.join(', ')].filter(Boolean).join(' - ') || 'No ground assessment reported.';
 
     const obstacleDescription = obstacles.length
         ? obstacles.map((item) => {
@@ -237,11 +259,11 @@ function buildAnalysisCards(analysisData) {
             description: qualityDescription
         },
         {
-            key: 'soil-assessment',
+            key: 'ground-assessment',
             icon: 'icons/golf-outline.svg',
-            title: 'Soil assessment',
-            status: traversabilityStatus(soil.traversability),
-            description: soilDescription
+            title: 'Ground assessment',
+            status: traversabilityStatus(ground.safety_to_traverse),
+            description: groundDescription
         },
         {
             key: 'obstacles',
@@ -254,7 +276,7 @@ function buildAnalysisCards(analysisData) {
             key: 'summary',
             icon: 'icons/book-outline.svg',
             title: 'Summary',
-            status: obstacleStatus(obstacles),
+            status: 'info',
             description: summaryText || 'No summary reported.'
         }
     ];
@@ -280,8 +302,8 @@ function buildAnalysisCards(analysisData) {
 }
 
 function qualityStatus(imageQuality) {
-    if (imageQuality.sufficient_for_human_detection === true) return 'success';
-    if (imageQuality.sufficient_for_human_detection === false) return 'danger';
+    if (imageQuality.sufficient === true) return 'success';
+    if (imageQuality.sufficient === false) return 'danger';
     return 'info';
 }
 
@@ -349,11 +371,16 @@ function resetProcessedState() {
     processedCanvas.classList.add('d-none');
     processedPlaceholder.classList.remove('is-hidden');
     processedSpinner.classList.add('is-hidden');
+    if (depthMapAccordion) depthMapAccordion.classList.add('d-none');
     if (detectionInfoHeading) detectionInfoHeading.classList.add('d-none');
     detectionInfo.innerHTML = '';
     ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
     const qb = document.getElementById('qualityBanner');
     if (qb) qb.classList.add('d-none');
+    const dc = document.getElementById('depthMapContainer');
+    if (dc) dc.classList.add('d-none');
+    const de = document.getElementById('depthMapEmpty');
+    if (de) de.classList.remove('d-none');
 }
 
 function setProcessingState(isProcessing) {
@@ -436,12 +463,13 @@ function displayResults(imageData, detections) {
             const width = x2 - x1;
             const height = y2 - y1;
 
-            // Check if detection center is inside the trapezoid
+            // Check if detection bottom-center point is inside the trapezoid
+            // Use bottom point (y2) as it's closest to ground, center X for horizontal position
             const bCenterX = (x1 + x2) / 2;
-            const bCenterY = (y1 + y2) / 2;
+            const bBottomY = y2;
             let inCorridor = false;
-            if (bCenterY > horizonY) {
-                const t = (bCenterY - horizonY) / (img.height - horizonY);
+            if (bBottomY > horizonY) {
+                const t = (bBottomY - horizonY) / (img.height - horizonY);
                 const edgeLeft = cx + (bottomLeft - cx) * t;
                 const edgeRight = cx + (bottomRight - cx) * t;
                 inCorridor = bCenterX > edgeLeft && bCenterX < edgeRight;
@@ -455,13 +483,15 @@ function displayResults(imageData, detections) {
             
             // Draw label
             const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
-            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%` + (inCorridor ? ' ⚠ IN PATH' : '');
+            const proxLabel = detection.proximity ? ` — ${detection.proximity}` : '';
+            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%${proxLabel}` + (inCorridor ? ' ⚠ IN PATH' : '');
             ctx.fillText(label, x1, y1 - 5);
         });
 
         processedPlaceholder.classList.add('is-hidden');
         processedSpinner.classList.add('is-hidden');
         processedCanvas.classList.remove('d-none');
+        if (depthMapAccordion) depthMapAccordion.classList.remove('d-none');
         if (detectionInfoHeading) {
             detectionInfoHeading.textContent = detections.length ? 'Detected objects' : 'Detection results';
             detectionInfoHeading.classList.remove('d-none');
@@ -473,9 +503,18 @@ function displayResults(imageData, detections) {
         detectionInfo.innerHTML = detections.length
             ? detections.map((detection, index) => {
                 const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
+                const proximityClassMap = {
+                    NEAR: 'proximity-badge-near',
+                    MEDIUM: 'proximity-badge-medium',
+                    FAR: 'proximity-badge-far'
+                };
+                const proximityText = String(detection.proximity || '').trim().toUpperCase();
+                const proxBadge = proximityText
+                    ? `<span class="badge proximity-badge ${proximityClassMap[proximityText] || 'proximity-badge-far'}">${escapeHtml(proximityText)}</span>`
+                    : '';
                 return `
                     <div class="detection-item">
-                        <span class="detection-label">${detectionClass} ${index + 1}</span>
+                        <span class="detection-label">${detectionClass} ${index + 1} ${proxBadge}</span>
                         <span class="detection-confidence">${(detection.confidence * 100).toFixed(1)}%</span>
                     </div>
                 `;

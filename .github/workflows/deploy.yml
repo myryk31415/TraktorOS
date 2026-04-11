@@ -1,0 +1,39 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 34.210.69.60
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            sudo dnf install -y git python3-pip nginx
+            if [ ! -d ~/TraktorOS ]; then
+              git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
+            fi
+            cd ~/TraktorOS
+            OLD_REQ=$(md5sum requirements.txt 2>/dev/null || echo "none")
+            git pull origin main
+            NEW_REQ=$(md5sum requirements.txt)
+            if [ "$OLD_REQ" != "$NEW_REQ" ]; then
+              pip3 install -r requirements.txt
+            fi
+            sudo cp nginx.conf /etc/nginx/conf.d/traktoros.conf
+            sudo rm -f /etc/nginx/conf.d/default.conf
+            sudo sed -i '/^    server {/,/^    }/s/^/# /' /etc/nginx/nginx.conf
+            chmod 711 /home/ec2-user
+            sudo nginx -t && sudo systemctl restart nginx
+            sudo systemctl enable nginx
+            sudo cp traktoros.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl restart traktoros
+            sudo systemctl enable traktoros

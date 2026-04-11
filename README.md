@@ -1,226 +1,137 @@
 # TraktorOS - Human Detection System
 
-A demo system for detecting humans in autonomous tractor field of view using PyTorch on AWS SageMaker.
+A demo system for detecting humans and obstacles in an autonomous tractor's field of view using PyTorch on AWS.
+
+**Live demo: [http://34.210.69.60](http://34.210.69.60)**
 
 ## Architecture
 
-Two modes are available:
-
-**Local mode (pretrained)** — no AWS needed, great for demos:
+**Hosted mode (EC2)** — pretrained models on AWS, no local setup needed:
 ```
-User → Frontend → Local Flask Server → Pretrained Faster R-CNN
+User → nginx (:80) → Static Frontend
+                   → Flask API (:5000) → Faster R-CNN (object detection)
+                                       → MiDaS (depth estimation)
+                                       → Amazon Bedrock (scene analysis)
+```
+
+**Local mode** — for offline development:
+```
+User → frontend/index.html (file://) → localhost:5000 → Same Flask API
 ```
 
 **SageMaker mode (custom trained)** — full AWS pipeline:
 ```
-User → Frontend → API Gateway → Lambda → SageMaker Endpoint → PyTorch Model
+User → Frontend → API Gateway → Lambda → SageMaker Endpoint → Custom PyTorch Model
                                     ↓
                                    S3 (Training Data)
 ```
-
-**Components:**
-- **Frontend**: HTML/CSS/JS for image upload and bounding box visualization
-- **Local Server**: Flask server running pretrained Faster R-CNN (COCO, already detects people)
-- **API Gateway + Lambda**: Lightweight proxy to SageMaker
-- **SageMaker**: Train and deploy PyTorch models
-- **S3**: Store training data and model artifacts
-- **Model**: Faster R-CNN for human detection
 
 ## Project Structure
 
 ```
 .
-├── local_server.py          # Local inference server (pretrained model)
-├── requirements.txt         # Local server dependencies
+├── local_server.py              # Flask API (detection + depth + Bedrock)
+├── requirements.txt             # Python dependencies
+├── nginx.conf                   # nginx: frontend + API proxy
+├── traktoros.service            # systemd service for Flask API
 ├── frontend/
-│   ├── index.html           # Web interface
-│   ├── app.js               # Frontend logic
-│   └── style.css            # Styling
-├── backend/
-│   ├── lambda_function.py   # Lambda proxy to SageMaker
-│   ├── requirements.txt     # Lambda dependencies
-│   └── template.yaml        # SAM template
-├── sagemaker/
-│   ├── train.py             # Training script
-│   ├── inference.py         # Inference handler
-│   └── requirements.txt     # Model dependencies
+│   ├── index.html               # Web interface
+│   ├── app.js                   # Frontend logic
+│   ├── style.css                # Styling
+│   └── icons/                   # UI icons
+├── .github/workflows/
+│   └── deploy.yml               # CI/CD: deploy to EC2 on push
 ├── scripts/
-│   ├── upload_training_data.py   # Upload data to S3
-│   ├── train_sagemaker.py        # Start training job
-│   └── deploy_sagemaker.py       # Deploy model endpoint
-└── data/
-    └── training/            # Your training data goes here
-        ├── images/
-        └── annotations.json
+│   ├── detect_horizon.py        # Horizon line detection
+│   ├── analyze_quality.py       # Image quality analysis
+│   ├── evaluate_fasterrcnn.py   # Model evaluation on COCO
+│   ├── coco_dataset.py          # COCO dataset loader
+│   ├── upload_training_data.py  # Upload training data to S3
+│   ├── train_sagemaker.py       # Start SageMaker training job
+│   └── deploy_sagemaker.py      # Deploy SageMaker endpoint
+├── backend/
+│   ├── lambda_function.py       # Lambda proxy to SageMaker
+│   └── template.yaml            # SAM template
+├── sagemaker/
+│   ├── train.py                 # Training script
+│   └── inference.py             # Inference handler
+├── models/                      # BRISQUE quality model files
+└── data/training/               # Training data and annotations
 ```
 
-## Quick Start (Local Pretrained Model)
+## Quick Start
 
-No AWS account needed. Uses Faster R-CNN pretrained on COCO (already detects people).
+### Live demo
+
+Go to [http://34.210.69.60](http://34.210.69.60) and upload an image.
+
+### Run locally
 
 ```bash
 pip install -r requirements.txt
 python3 local_server.py
 ```
 
-Then open `frontend/index.html` in your browser, select "Local (Pretrained)", and upload an image.
+Open `frontend/index.html` in your browser. The frontend auto-detects `file://` and routes requests to `localhost:5000`.
 
-## SageMaker Setup (Custom Trained Model)
+## Detection Features
+
+- **Object detection**: Faster R-CNN pretrained on COCO — detects people, vehicles, animals, and farm-relevant objects
+- **Depth estimation**: MiDaS monocular depth — classifies detections as NEAR/MEDIUM/FAR
+- **Tractor path overlay**: Configurable corridor with horizon line to highlight objects in the tractor's path
+- **Image quality check**: Blur, brightness, contrast, and resolution analysis
+- **Scene analysis**: Amazon Bedrock (Nova Pro) for soil assessment, obstacle severity, and safety summary
+
+## SageMaker Setup (Custom Model Training)
 
 ### Prerequisites
 
-1. **AWS Account** with SageMaker access
-2. **AWS CLI** configured with credentials
-3. **Python 3.9+** with pip
-4. **AWS SAM CLI** ([Installation Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html))
+1. AWS Account with SageMaker access
+2. AWS CLI configured
+3. Python 3.9+
+4. AWS SAM CLI
 
-### Step 1: Prepare Training Data
-
-Create your training data directory:
+### Train and deploy
 
 ```bash
-mkdir -p data/training/images
-```
-
-Add your images and create `data/training/annotations.json`:
-
-```json
-[
-  {
-    "image": "images/tractor_field_001.jpg",
-    "boxes": [[100, 150, 200, 400], [300, 200, 380, 450]]
-  },
-  {
-    "image": "images/tractor_field_002.jpg",
-    "boxes": [[50, 100, 150, 350]]
-  }
-]
-```
-
-**Box format**: `[x1, y1, x2, y2]` (top-left and bottom-right coordinates)
-
-### Step 2: Upload Training Data to S3
-
-```bash
+# Upload training data to S3
 python3 scripts/upload_training_data.py
-```
 
-This creates an S3 bucket and uploads your training data.
-
-### Step 3: Train Model on SageMaker
-
-```bash
-pip install sagemaker boto3
+# Start training job (~30-60 min on ml.p3.2xlarge)
 python3 scripts/train_sagemaker.py
-```
 
-This will:
-- Start a SageMaker training job (takes 30-60 minutes)
-- Use GPU instances (ml.p3.2xlarge)
-- Save trained model to S3
-
-### Step 4: Deploy Model to SageMaker Endpoint
-
-```bash
+# Deploy model endpoint (~5-10 min)
 python3 scripts/deploy_sagemaker.py
+
+# Deploy API Gateway + Lambda
+cd backend && sam build && sam deploy --guided
 ```
 
-This creates a SageMaker endpoint for real-time inference (takes 5-10 minutes).
+Then update `frontend/app.js` with your API Gateway URL and select "SageMaker" mode in the UI.
 
-### Step 5: Deploy API Gateway + Lambda
+## Deployment
+
+Pushes to `main` auto-deploy to EC2 via GitHub Actions.
+
+The workflow pulls latest code, installs deps if changed, updates nginx, and restarts the Flask API via systemd.
+
+### GitHub Actions secrets
+
+- `EC2_SSH_KEY`: Contents of the EC2 SSH private key
+
+### Manual EC2 setup
 
 ```bash
-cd backend
-sam build
-sam deploy --guided
+ssh -i ~/.ssh/traktoros-key.pem ec2-user@34.210.69.60
+sudo dnf install -y git python3-pip nginx
+git clone https://github.com/myryk31415/TraktorOS.git ~/TraktorOS
+cd ~/TraktorOS
+pip3 install -r requirements.txt
+sudo cp nginx.conf /etc/nginx/conf.d/traktoros.conf
+sudo cp traktoros.service /etc/systemd/system/
+chmod 711 /home/ec2-user
+sudo systemctl enable --now nginx traktoros
 ```
-
-Configuration:
-- Stack name: `traktoros-api`
-- Region: Your preferred region
-- SAGEMAKER_ENDPOINT: Use the endpoint name from Step 4
-
-### Step 6: Configure Frontend
-
-Update `frontend/app.js` with your API endpoint:
-
-```javascript
-const API_ENDPOINT = 'https://YOUR_API_ID.execute-api.REGION.amazonaws.com/prod/detect';
-```
-
-### Step 7: Test
-
-Open `frontend/index.html` in your browser and upload a test image!
-
-## How It Works
-
-1. **Training Phase**:
-   - Upload labeled images to S3
-   - SageMaker trains Faster R-CNN on your data
-   - Model saved to S3
-
-2. **Inference Phase**:
-   - User uploads image via web interface
-   - API Gateway → Lambda (lightweight proxy)
-   - Lambda → SageMaker endpoint (runs PyTorch model)
-   - Bounding boxes returned and displayed
-
-## Cost Estimates
-
-- **S3**: ~$0.023/GB/month for storage
-- **SageMaker Training**: ~$3.06/hour (ml.p3.2xlarge)
-- **SageMaker Endpoint**: ~$0.269/hour (ml.m5.xlarge)
-- **Lambda**: ~$0.20 per 1M requests
-- **API Gateway**: ~$3.50 per 1M requests
-
-**Tip**: Stop the SageMaker endpoint when not in use to save costs!
-
-## Customization
-
-### Change Model Hyperparameters
-
-Edit `scripts/train_sagemaker.py`:
-
-```python
-hyperparameters={
-    'epochs': 20,           # More epochs for better accuracy
-    'batch-size': 8,        # Larger batch if you have more GPU memory
-    'learning-rate': 0.001  # Lower for fine-tuning
-}
-```
-
-### Use Different Instance Types
-
-**Training** (in `train_sagemaker.py`):
-- `ml.p3.2xlarge` - 1 GPU, good for small datasets
-- `ml.p3.8xlarge` - 4 GPUs, faster training
-
-**Inference** (in `deploy_sagemaker.py`):
-- `ml.t2.medium` - Cheapest, slower inference
-- `ml.m5.xlarge` - Balanced (recommended)
-- `ml.p2.xlarge` - GPU inference for high throughput
-
-## Troubleshooting
-
-**"No module named sagemaker"**: Run `pip install sagemaker boto3`
-
-**"Role not found"**: The script will create the IAM role automatically
-
-**Training fails**: Check CloudWatch logs in SageMaker console
-
-**Endpoint not responding**: Verify endpoint is "InService" in SageMaker console
-
-**CORS errors**: Check API Gateway CORS settings in `template.yaml`
-
-## Next Steps
-
-- [ ] Collect more tractor field images
-- [ ] Add data augmentation for better training
-- [ ] Implement real-time video processing
-- [ ] Add distance estimation using camera calibration
-- [ ] Store detection logs in DynamoDB
-- [ ] Add emergency stop integration
-- [ ] Deploy frontend to S3 + CloudFront
 
 ## License
 
