@@ -4,20 +4,15 @@
 
 ---
 
-## Subtitle
-
-A multi-layered computer vision pipeline combining on-device object detection, monocular depth estimation, and cloud-based scene analysis to prevent hazardous situations in autonomous farming — deployed live on AWS.
-
----
-
 ## 1. Overview
 
-TraktorOS is a real-time safety system designed for autonomous agricultural machinery. Rather than building a single detection model, we built a complete decision pipeline that answers the question every autonomous tractor must answer in real time: **What should I do right now?**
+#FIXME
+TraktorOS is a multi-layered computer vision pipeline combining on-device object detection, monocular depth estimation, and cloud-based scene analysis to prevent hazardous situations in autonomous farming. Rather than building a single detection model, we process the image in multiple ways to enable selfdriving vehicles to make safe navigation decisions.
 
 Our system combines three analysis layers:
 
-1. **On-Device Analysis** — Faster R-CNN / YOLO11x for object detection + MiDaS for depth estimation, producing instant action recommendations (stop, honk, steer, continue)
-2. **Image Quality Assessment** — BRISQUE and classical CV metrics to determine if sensor input is reliable enough for safe operation
+1. **Image Quality Assessment** — BRISQUE and classical CV metrics to determine if sensor input is reliable enough for safe operation
+2. **On-Device Analysis** — Faster R-CNN / YOLO11x for object detection + MiDaS for depth estimation, producing instant action recommendations (stop, honk, steer, continue)
 3. **Thorough Analysis** — Amazon Bedrock (Nova Pro) for scene-level understanding: ground conditions, path analysis, vegetation/maintenance detection
 
 The entire system is deployed on AWS EC2 with a web-based dashboard, CI/CD via GitHub Actions, and a live demo accessible at [http://34.210.69.60](http://34.210.69.60).
@@ -28,28 +23,20 @@ The entire system is deployed on AWS EC2 with a web-based dashboard, CI/CD via G
 
 ### 2.1 Detection Pipeline
 
-We use a dual-model approach for object detection:
+We use a modular design which enables the models to be switched easily, on the website we provide two example models:
 
-- **Faster R-CNN (ResNet-50 FPN)** pretrained on COCO, filtered to agriculture-relevant classes: persons, vehicles (car, truck, bicycle, motorcycle), animals (dog, horse, sheep, cow, bird), and field obstacles (stop signs, traffic lights, backpacks, chairs, potted plants as proxy objects)
-- **YOLO11x** for higher-throughput detection as an alternative model selectable in the UI
+- **Faster R-CNN (ResNet-50 FPN)** pretrained on COCO, filtered to agriculture-relevant classes: persons, vehicles, animals and field obstacles.
+- **YOLO11x** for higher-throughput detection
 
-Both models run locally on the onboard machine with no external API calls, ensuring data stays within the vehicle as required.
+Both run locally on the machine with no external API calls, ensuring data stays within the vehicle as required.
 
 ### 2.2 Depth Estimation
 
-**MiDaS (Small)** provides monocular depth estimation for every frame. For each detected object, we sample the depth in the lower half of the bounding box (feet/base area) and classify proximity:
-
-- **VERY CLOSE** (rel_depth > 0.5)
-- **NEARBY** (rel_depth > 0.2)
-- **FAR** (otherwise)
+**MiDaS** provides monocular depth estimation for every frame. For each detected object, we sample the depth in the lower half of the bounding box (feet/base area) and classify proximity
 
 ### 2.3 Tractor Path Modeling
 
-The UI provides a configurable perspective trapezoid representing the tractor's forward path, defined by:
-- **Tractor width** (adjustable, default 90%)
-- **Horizon line** (adjustable, default 36%)
-
-The corridor converges to a vanishing point at the horizon. Each detection is classified as "in path" or "outside path" based on whether its center falls within this trapezoid.
+The UI provides a configurable perspective trapezoid representing the tractor's forward path, defined by `Tractor width` and `Horizon line`. The calculated path is used to determine the relevance of detected objects for the navigation.
 
 ### 2.4 Action Decision Tree
 
@@ -91,7 +78,7 @@ The core innovation is a deterministic decision tree that combines detection cla
 For deeper scene understanding, we use Amazon Bedrock's Nova Pro model to analyze:
 
 - **Ground assessment**: Surface type, traversability (safe/caution/unsafe), hazards
-- **Path analysis**: Detect if on a trail/road, upcoming turns and their direction/distance
+- **Path prediction**: Detect if on a trail/road, upcoming turns and their direction/distance
 - **Maintenance detection**: Overhanging branches, damaged fences, blocked drainage, erosion — issues requiring farmer attention
 
 These results feed back into the action recommendations: unsafe ground triggers STOP, detected turns generate TURN actions, and maintenance items are flagged.
@@ -119,7 +106,7 @@ User → nginx (:80) → Static Frontend (HTML/CSS/JS)
 
 - **Frontend**: Bootstrap 5 dashboard with real-time canvas rendering of detections, depth maps, and action cards
 - **Backend**: Flask service running PyTorch models locally on the onboard machine
-- **Infrastructure**: EC2 t3.xlarge (4 vCPU, 16GB RAM), nginx reverse proxy, GitHub Actions CI/CD
+- **Infrastructure**: EC2 t3.xlarge (4 vCPU, 16GB RAM), nginx reverse proxy, GitHub Actions CI/**CD**
 - **Auto-deploy**: Every push to `main` triggers deployment to EC2 via SSH
 
 ---
