@@ -14,13 +14,19 @@ jobs:
           host: 34.210.69.60
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 30m
           script: |
             sudo dnf install -y git python3-pip
             if [ ! -d ~/TraktorOS ]; then
               git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
             fi
             cd ~/TraktorOS
+            OLD_REQ=$(md5sum requirements.txt 2>/dev/null || echo "none")
             git pull origin main
-            pip3 install -r requirements.txt --quiet
+            NEW_REQ=$(md5sum requirements.txt)
+            if [ "$OLD_REQ" != "$NEW_REQ" ]; then
+              pip3 install -r requirements.txt
+            fi
             pkill -f local_server.py || true
+            sleep 1
             nohup python3 local_server.py > server.log 2>&1 &
