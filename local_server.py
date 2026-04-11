@@ -158,6 +158,7 @@ def detect():
                 'depth': round(rel_depth, 3),
                 'proximity': proximity
             })
+            print(f"  [{coco_core_agri_classes[preds['labels'][i].item()]}] conf={preds['scores'][i].item():.2f} rel_depth={rel_depth:.3f} proximity={proximity} bbox={box}")
 
     # Encode depth map as base64 PNG for visualization
     depth_colored = cv2.applyColorMap((depth_norm * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
