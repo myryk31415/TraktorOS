@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TraktorOS Model Comparison</title>
+    <title>TraktorOS Model Eval Results</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,62 +17,37 @@
     <main class="shell">
         <section class="hero">
             <div class="hero-copy">
-                <p class="eyebrow">TraktorOS benchmark atlas</p>
-                <h1>Object detection model performance, mapped side by side</h1>
+                <p class="eyebrow">TraktorOS live benchmark</p>
+                <h1>Model evaluation snapshot</h1>
                 <p class="lead">
-                    A static comparison dashboard built from the provided JSON benchmark data.
-                    It highlights accuracy, latency, throughput, and model size across the selected pretrained detectors.
+                    Fast presentation view of current evaluation metrics.
+                    Ranked by F1 score and optimized for a 20-second walkthrough.
                 </p>
                 <div class="hero-meta" id="heroMeta"></div>
             </div>
             <aside class="hero-panel">
                 <div class="hero-panel-header">
-                    <span class="panel-kicker">Snapshot</span>
-                    <span class="panel-badge">Static</span>
+                    <span class="panel-kicker">Run summary</span>
+                    <span class="panel-badge">JSON</span>
                 </div>
                 <div class="snapshot-grid" id="snapshotGrid"></div>
             </aside>
         </section>
 
-        <section class="section-card section-intro">
-            <div class="section-header">
-                <div>
-                    <p class="section-kicker">Benchmark context</p>
-                    <h2>What the numbers mean</h2>
-                </div>
-            </div>
-            <div class="notes-grid" id="notesGrid"></div>
-        </section>
-
         <section class="section-card">
             <div class="section-header compact">
                 <div>
-                    <p class="section-kicker">Performance bands</p>
-                    <h2>Comparative ranking by primary COCO AP</h2>
+                    <h2>Model comparison</h2>
                 </div>
-                <p class="section-subtitle">Higher is better. Missing values are shown as unavailable where the source did not publish a metric.</p>
+                <p class="section-subtitle">F1 score per model.</p>
             </div>
-            <div class="chart-stack">
+            <div class="chart-stack single-chart">
                 <div class="chart-card">
                     <div class="chart-header">
-                        <h3>COCO AP@[.50:.95]</h3>
-                        <span class="chart-caption">Primary quality metric</span>
+                        <h3>Detection quality (F1)</h3>
+                        <span class="chart-caption">Higher is better</span>
                     </div>
-                    <div id="apChart" class="bar-chart"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>Latency on T4</h3>
-                        <span class="chart-caption">Lower is better</span>
-                    </div>
-                    <div id="latencyChart" class="bar-chart"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>Throughput</h3>
-                        <span class="chart-caption">FPS on T4 where available</span>
-                    </div>
-                    <div id="fpsChart" class="bar-chart"></div>
+                    <div id="f1Chart" class="bar-chart"></div>
                 </div>
             </div>
         </section>
@@ -80,36 +55,43 @@
         <section class="section-card">
             <div class="section-header compact">
                 <div>
-                    <p class="section-kicker">Model cards</p>
-                    <h2>Per-model summary</h2>
+                    <h2>Model comparison</h2>
                 </div>
-                <p class="section-subtitle">Cards are sorted by COCO AP@[.50:.95] where available.</p>
+                <p class="section-subtitle">Img/s per model.</p>
             </div>
-            <div id="modelCards" class="cards-grid"></div>
+            <div class="chart-stack single-chart">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Runtime throughput (img/s)</h3>
+                        <span class="chart-caption">Higher is better</span>
+                    </div>
+                    <div id="imgPerSecChart" class="bar-chart"></div>
+                </div>
+            </div>
         </section>
 
         <section class="section-card">
             <div class="section-header compact">
                 <div>
-                    <p class="section-kicker">Comparison table</p>
-                    <h2>Dense view of all published values</h2>
+                    <p class="section-kicker">Main table</p>
+                    <h2>Ranked model metrics</h2>
                 </div>
-                <p class="section-subtitle">The table normalizes the JSON into one row per model or model variant.</p>
+                <p class="section-subtitle">Sorted by F1 for quick comparison.</p>
             </div>
             <div class="table-wrap">
                 <table class="comparison-table">
                     <thead>
                         <tr>
                             <th>Model</th>
-                            <th>Family</th>
-                            <th>AP@[.50:.95]</th>
-                            <th>AP50</th>
-                            <th>Latency (ms)</th>
-                            <th>FPS</th>
-                            <th>Params (M)</th>
-                            <th>GFLOPs</th>
-                            <th>Input</th>
-                            <th>License</th>
+                            <th>F1</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>TP</th>
+                            <th>FP</th>
+                            <th>FN</th>
+                            <th>Mean IoU</th>
+                            <th>Img/s</th>
+                            <th>Time (s)</th>
                         </tr>
                     </thead>
                     <tbody id="comparisonTableBody"></tbody>
@@ -118,7 +100,6 @@
         </section>
     </main>
 
-    <script src="data.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

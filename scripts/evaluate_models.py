@@ -256,7 +256,7 @@ def prediction_to_tensors(
 
 
 def predicted_person_class_id(model_name: str) -> int:
-    if model_name in {"fasterrcnn", "fasterrcnn_v2"}:
+    if model_name in {"fasterrcnn", "fasterrcnn_v2", "rfdetr-large", "rfdetr-small"}:
         return 1
     return 0
 

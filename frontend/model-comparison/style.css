@@ -309,6 +309,14 @@ body {
     margin-top: 1rem;
 }
 
+.chart-stack.single-chart {
+    grid-template-columns: 1fr;
+}
+
+.chart-stack.two-charts {
+    grid-template-columns: 1fr;
+}
+
 .chart-card {
     padding: 1rem;
     background: linear-gradient(160deg, rgba(7, 19, 27, 0.9), rgba(4, 14, 20, 0.94));
@@ -364,6 +372,27 @@ body {
     border: 1px solid rgba(143, 200, 214, 0.12);
 }
 
+.bar-metrics {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.bar-duo {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.bar-mini-label {
+    width: 3.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.72rem;
+    color: #9edee9;
+}
+
 .bar-fill {
     position: absolute;
     inset: 0 auto 0 0;
@@ -372,7 +401,7 @@ body {
 }
 
 .bar-fill.alt {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.95), rgba(251, 191, 36, 0.92));
+    background: linear-gradient(90deg, rgba(168, 88, 0, 0.96), rgba(217, 119, 6, 0.94));
 }
 
 .bar-fill.danger {
@@ -380,7 +409,7 @@ body {
 }
 
 .bar-value {
-    min-width: 4.6rem;
+    min-width: 4.3rem;
     text-align: right;
     font-weight: 700;
     font-family: 'IBM Plex Mono', monospace;
@@ -601,6 +630,15 @@ body {
     .bar-row {
         grid-template-columns: 1fr;
         gap: 0.35rem;
+    }
+
+    .bar-duo {
+        grid-template-columns: 1fr;
+        gap: 0.2rem;
+    }
+
+    .bar-mini-label {
+        width: auto;
     }
 
     .bar-value {

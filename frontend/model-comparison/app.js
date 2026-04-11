@@ -1,151 +1,49 @@
-const data = window.MODEL_COMPARISON_DATA;
-
-const nf1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
-const nf2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
-
-function formatNumber(value, digits = 1) {
+function fmt(value, digits = 3) {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
-    return digits === 0 ? `${Math.round(value)}` : new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: digits
-    }).format(value);
+    return Number(value).toFixed(digits);
 }
 
-function formatResolution(value) {
-    if (value === null || value === undefined) return '—';
-    return `${value} px`;
-}
-
-function formatMetric(value, digits = 1, suffix = '') {
+function fmtInt(value) {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
-    return `${formatNumber(value, digits)}${suffix}`;
+    return `${Math.round(Number(value))}`;
 }
 
-function makeLink(url, label) {
-    if (!url) return '';
-    return `<a class="source-link" href="${url}" target="_blank" rel="noreferrer">${label}</a>`;
-}
-
-function flattenModels(models) {
-    const rows = [];
-
-    for (const model of models) {
-        if (Array.isArray(model.variants) && model.variants.length > 0) {
-            for (const variant of model.variants) {
-                rows.push({
-                    ...model,
-                    ...variant,
-                    parent_name: model.model_name,
-                    family: model.family,
-                    display_name: variant.model_name,
-                    variant: true
-                });
-            }
-            continue;
-        }
-
-        rows.push({
-            ...model,
-            display_name: model.model_name,
-            variant: false
-        });
-    }
-
+function modelRows(payload) {
+    const rows = Array.isArray(payload?.models) ? payload.models.slice() : [];
+    rows.sort((a, b) => (Number(b.f1 || 0) - Number(a.f1 || 0)));
     return rows;
 }
 
-function getPrimaryAp(row) {
-    return row?.coco?.ap ?? row?.ap ?? null;
-}
+function renderHeroMeta(payload) {
+    const meta = document.getElementById('heroMeta');
+    const settings = payload.settings || {};
+    const summary = payload.summary || {};
 
-function getPrimaryAp50(row) {
-    return row?.coco?.ap50 ?? row?.ap50 ?? null;
-}
-
-function getLatency(row) {
-    return row?.latency_ms ?? row?.latency_ms_t4_tensorrt_fp16 ?? row?.latency_ms_t4 ?? null;
-}
-
-function getFps(row) {
-    return row?.fps ?? row?.fps_t4 ?? null;
-}
-
-function getParams(row) {
-    return row?.params_millions ?? row?.model_metadata?.parameters_millions ?? null;
-}
-
-function getGflops(row) {
-    return row?.gflops ?? row?.model_metadata?.gflops ?? null;
-}
-
-function getSortScore(row) {
-    const ap = getPrimaryAp(row);
-    return ap === null ? -Infinity : ap;
-}
-
-function compareNullableDesc(a, b) {
-    const aVal = a === null || a === undefined ? -Infinity : a;
-    const bVal = b === null || b === undefined ? -Infinity : b;
-    return bVal - aVal;
-}
-
-function compareNullableAsc(a, b) {
-    const aVal = a === null || a === undefined ? Infinity : a;
-    const bVal = b === null || b === undefined ? Infinity : b;
-    return aVal - bVal;
-}
-
-function metricBadge(label, value) {
-    return `<span class="metric-chip"><span class="small-label">${label}</span><span class="metric-value">${value}</span></span>`;
-}
-
-function renderHeroMeta(meta) {
-    const heroMeta = document.getElementById('heroMeta');
-    heroMeta.innerHTML = [
-        `<span class="meta-chip">${meta.benchmark_dataset}</span>`,
-        `<span class="meta-chip">${meta.created}</span>`,
-        `<span class="meta-chip">${data.models.length} model entries</span>`,
-        `<span class="meta-chip">${data.models.reduce((count, model) => count + (model.variants ? model.variants.length : 1), 0)} comparison rows</span>`
+    meta.innerHTML = [
+        `<span class="meta-chip">Device: ${settings.device || '—'}</span>`,
+        `<span class="meta-chip">Images: ${fmtInt(settings.max_images)}</span>`,
+        `<span class="meta-chip">Conf: ${fmt(settings.confidence_threshold, 2)}</span>`,
+        `<span class="meta-chip">IoU: ${fmt(settings.iou_threshold, 2)}</span>`,
+        `<span class="meta-chip">Total time: ${fmt(summary.overall_elapsed_seconds, 2)} s</span>`
     ].join('');
 }
 
-function renderSnapshot(rows) {
-    const snapshotGrid = document.getElementById('snapshotGrid');
-    const bestAp = rows.filter((row) => getPrimaryAp(row) !== null).sort((a, b) => compareNullableDesc(getPrimaryAp(a), getPrimaryAp(b)))[0];
-    const fastest = rows.filter((row) => getLatency(row) !== null).sort((a, b) => compareNullableAsc(getLatency(a), getLatency(b)))[0];
-    const fastestFps = rows.filter((row) => getFps(row) !== null).sort((a, b) => compareNullableDesc(getFps(a), getFps(b)))[0];
-    const largest = rows.filter((row) => getParams(row) !== null).sort((a, b) => compareNullableDesc(getParams(a), getParams(b)))[0];
-    const newest = rows.slice().sort((a, b) => (b.year_released ?? 0) - (a.year_released ?? 0))[0];
+function renderSnapshot(payload, rows) {
+    const grid = document.getElementById('snapshotGrid');
+    const bestF1 = rows[0];
+
+    const bestPrecision = rows.slice().sort((a, b) => Number(b.precision || 0) - Number(a.precision || 0))[0];
+    const bestRecall = rows.slice().sort((a, b) => Number(b.recall || 0) - Number(a.recall || 0))[0];
+    const fastest = rows.slice().sort((a, b) => Number(b.throughput_images_per_second || 0) - Number(a.throughput_images_per_second || 0))[0];
 
     const cards = [
-        [
-            'Best AP',
-            bestAp ? `${formatNumber(getPrimaryAp(bestAp), 1)} by ${bestAp.display_name}` : '—',
-            'Primary COCO metric'
-        ],
-        [
-            'Fastest latency',
-            fastest ? `${formatMetric(getLatency(fastest), 2, ' ms')}` : '—',
-            fastest ? fastest.display_name : 'Latency unavailable'
-        ],
-        [
-            'Top throughput',
-            fastestFps ? `${formatMetric(getFps(fastestFps), 0, ' FPS')}` : '—',
-            fastestFps ? fastestFps.display_name : 'FPS unavailable'
-        ],
-        [
-            'Largest footprint',
-            largest ? `${formatMetric(getParams(largest), 1, ' M')}` : '—',
-            largest ? largest.display_name : 'Parameters unavailable'
-        ],
-        [
-            'Newest release',
-            newest ? `${newest.year_released}` : '—',
-            newest ? newest.display_name : ''
-        ]
+        ['Best F1', bestF1 ? `${fmt(bestF1.f1)} (${bestF1.model})` : '—', 'Main quality indicator'],
+        ['Best precision', bestPrecision ? `${fmt(bestPrecision.precision)} (${bestPrecision.model})` : '—', 'Fewest false alarms'],
+        ['Best recall', bestRecall ? `${fmt(bestRecall.recall)} (${bestRecall.model})` : '—', 'Most detections found'],
+        ['Fastest', fastest ? `${fmt(fastest.throughput_images_per_second, 2)} img/s (${fastest.model})` : '—', 'Runtime throughput'],
     ];
 
-    snapshotGrid.innerHTML = cards.map(([label, value, note]) => `
+    grid.innerHTML = cards.map(([label, value, note]) => `
         <article class="snapshot-card">
             <span class="snapshot-label">${label}</span>
             <span class="snapshot-value">${value}</span>
@@ -154,214 +52,105 @@ function renderSnapshot(rows) {
     `).join('');
 }
 
-function renderNotes(notes) {
-    const notesGrid = document.getElementById('notesGrid');
-    notesGrid.innerHTML = notes.map((note, index) => `
-        <article class="note-card">
-            <span class="small-label">Note ${index + 1}</span>
-            <p>${note}</p>
-        </article>
-    `).join('');
-}
+function renderF1Chart(rows) {
+    const chart = document.getElementById('f1Chart');
+    const f1Values = rows.map((row) => Number(row.f1 || 0));
+    const maxF1 = Math.max(...f1Values, 1e-6);
 
-function renderBarChart(containerId, rows, options) {
-    const container = document.getElementById(containerId);
-    const metricValues = rows.map(options.getValue).filter((value) => value !== null && value !== undefined);
-
-    if (metricValues.length === 0) {
-        container.innerHTML = '<div class="empty-state">No published values for this metric.</div>';
-        return;
-    }
-
-    const max = Math.max(...metricValues);
-    const min = Math.min(...metricValues);
-    const range = max - min || 1;
-
-    container.innerHTML = rows.map((row) => {
-        const value = options.getValue(row);
-        if (value === null || value === undefined) {
-            return `
-                <div class="bar-row">
-                    <div class="bar-label">
-                        <span class="bar-name">${row.display_name}</span>
-                        <span class="bar-sub">${row.family}</span>
-                    </div>
-                    <div class="bar-track"><div class="bar-fill" style="width: 0%"></div></div>
-                    <div class="bar-value">—</div>
-                </div>
-            `;
-        }
-
-        const width = options.lowerIsBetter
-            ? ((max - value) / range) * 100
-            : (value / max) * 100;
-        const safeWidth = Math.max(6, Math.min(100, width));
-        const fillClass = options.fillClass || '';
-        const displayValue = options.format(value);
-
+    chart.innerHTML = rows.map((row) => {
+        const f1 = Number(row.f1 || 0);
+        const f1Width = Math.max(6, (f1 / maxF1) * 100);
         return `
             <div class="bar-row">
                 <div class="bar-label">
-                    <span class="bar-name">${row.display_name}</span>
-                    <span class="bar-sub">${row.family}</span>
+                    <span class="bar-name">${row.model}</span>
+                    <span class="bar-sub">Precision ${fmt(row.precision)} · Recall ${fmt(row.recall)}</span>
                 </div>
-                <div class="bar-track"><div class="bar-fill ${fillClass}" style="width: ${safeWidth}%"></div></div>
-                <div class="bar-value">${displayValue}</div>
+                <div class="bar-track"><div class="bar-fill" style="width: ${f1Width}%"></div></div>
+                <div class="bar-value">${fmt(f1)}</div>
             </div>
         `;
     }).join('');
 }
 
-function renderModelCards(rows) {
-    const cards = document.getElementById('modelCards');
-    cards.innerHTML = rows.map((row) => {
-        const ap = getPrimaryAp(row);
-        const ap50 = getPrimaryAp50(row);
-        const latency = getLatency(row);
-        const fps = getFps(row);
-        const params = getParams(row);
-        const gflops = getGflops(row);
-        const inputResolution = row.input_resolution ?? null;
-        const sourceNotes = Array.isArray(row.source_notes) ? row.source_notes : [];
-        const extraTitle = row.variant ? row.parent_name : row.architecture_type;
+function renderThroughputChart(rows) {
+    const chart = document.getElementById('imgPerSecChart');
+    const ipsValues = rows.map((row) => Number(row.throughput_images_per_second || 0));
+    const maxIps = Math.max(...ipsValues, 1e-6);
 
+    chart.innerHTML = rows.map((row) => {
+        const imgPerSec = Number(row.throughput_images_per_second || 0);
+        const ipsWidth = Math.max(6, (imgPerSec / maxIps) * 100);
         return `
-            <article class="model-card">
-                <div class="model-topline">
-                    <div>
-                        <span class="model-family">${row.family}</span>
-                        <h3>${row.display_name}</h3>
-                        <p class="card-muted">${extraTitle}</p>
-                    </div>
-                    <div class="model-score">AP ${ap === null ? '—' : formatNumber(ap, 1)}</div>
+            <div class="bar-row">
+                <div class="bar-label">
+                    <span class="bar-name">${row.model}</span>
+                    <span class="bar-sub">Elapsed ${fmt(row.elapsed_seconds, 2)} s</span>
                 </div>
-                <div class="model-tag-row">
-                    <span class="table-pill">${row.detection_type}</span>
-                    <span class="table-pill">${row.backbone}</span>
-                    <span class="table-pill">${row.year_released}</span>
-                </div>
-                <div class="metric-grid">
-                    <div class="model-metric">
-                        <span class="metric-label">COCO AP</span>
-                        <span class="metric-value ${ap === null ? 'missing' : ''}">${ap === null ? '—' : formatNumber(ap, 1)}</span>
-                        <span class="metric-note">Primary benchmark</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">AP50</span>
-                        <span class="metric-value ${ap50 === null ? 'missing' : ''}">${ap50 === null ? '—' : formatNumber(ap50, 1)}</span>
-                        <span class="metric-note">COCO AP at 0.50 IoU</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">Latency</span>
-                        <span class="metric-value ${latency === null ? 'missing' : ''}">${latency === null ? '—' : formatMetric(latency, 2, ' ms')}</span>
-                        <span class="metric-note">T4 / TensorRT FP16 where published</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">FPS</span>
-                        <span class="metric-value ${fps === null ? 'missing' : ''}">${fps === null ? '—' : formatMetric(fps, 0)}</span>
-                        <span class="metric-note">Throughput on T4 where available</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">Params</span>
-                        <span class="metric-value ${params === null ? 'missing' : ''}">${params === null ? '—' : formatMetric(params, 1, ' M')}</span>
-                        <span class="metric-note">Trainable parameters</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">GFLOPs</span>
-                        <span class="metric-value ${gflops === null ? 'missing' : ''}">${gflops === null ? '—' : formatMetric(gflops, 1)}</span>
-                        <span class="metric-note">Reported compute</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">Input</span>
-                        <span class="metric-value ${inputResolution === null ? 'missing' : ''}">${inputResolution === null ? '—' : formatResolution(inputResolution)}</span>
-                        <span class="metric-note">Benchmark resolution</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">License</span>
-                        <span class="metric-value">${row.license}</span>
-                        <span class="metric-note">Usage / redistribution</span>
-                    </div>
-                    <div class="model-metric">
-                        <span class="metric-label">Family</span>
-                        <span class="metric-value">${row.family}</span>
-                        <span class="metric-note">Comparison group</span>
-                    </div>
-                </div>
-                <div class="sources">
-                    ${makeLink(row.paper_url, 'Paper')}
-                    ${makeLink(row.code_url, 'Code')}
-                    ${row.performance_source ? makeLink(row.performance_source, 'Benchmarks') : ''}
-                    ${sourceNotes.length ? `<span class="table-pill">${sourceNotes.join(' · ')}</span>` : ''}
-                </div>
-            </article>
+                <div class="bar-track"><div class="bar-fill alt" style="width: ${ipsWidth}%"></div></div>
+                <div class="bar-value">${fmt(imgPerSec, 2)}</div>
+            </div>
         `;
     }).join('');
 }
 
-function renderComparisonTable(rows) {
+function renderTable(rows) {
     const body = document.getElementById('comparisonTableBody');
-    body.innerHTML = rows.map((row) => {
-        const ap = getPrimaryAp(row);
-        const ap50 = getPrimaryAp50(row);
-        const latency = getLatency(row);
-        const fps = getFps(row);
-        const params = getParams(row);
-        const gflops = getGflops(row);
-        const inputResolution = row.input_resolution ?? '—';
-
-        return `
-            <tr>
-                <td>
-                    <div class="row-top">
-                        <span class="model-badge">${row.family}</span>
-                        <strong>${row.display_name}</strong>
-                    </div>
-                    <div class="cell-small">${row.detection_type}</div>
-                </td>
-                <td>${row.family}</td>
-                <td>${ap === null ? '—' : formatNumber(ap, 1)}</td>
-                <td>${ap50 === null ? '—' : formatNumber(ap50, 1)}</td>
-                <td>${latency === null ? '—' : formatMetric(latency, 2)}</td>
-                <td>${fps === null ? '—' : formatMetric(fps, 0)}</td>
-                <td>${params === null ? '—' : formatMetric(params, 1)}</td>
-                <td>${gflops === null ? '—' : formatMetric(gflops, 1)}</td>
-                <td>${inputResolution === '—' ? '—' : `${inputResolution}`}</td>
-                <td>${row.license}</td>
-            </tr>
-        `;
-    }).join('');
+    body.innerHTML = rows.map((row) => `
+        <tr>
+            <td><strong>${row.model}</strong></td>
+            <td>${fmt(row.f1)}</td>
+            <td>${fmt(row.precision)}</td>
+            <td>${fmt(row.recall)}</td>
+            <td>${fmtInt(row.tp)}</td>
+            <td>${fmtInt(row.fp)}</td>
+            <td>${fmtInt(row.fn)}</td>
+            <td>${fmt(row.mean_iou)}</td>
+            <td>${fmt(row.throughput_images_per_second, 2)}</td>
+            <td>${fmt(row.elapsed_seconds, 2)}</td>
+        </tr>
+    `).join('');
 }
 
-function buildPage() {
-    const rows = flattenModels(data.models).sort((a, b) => compareNullableDesc(getSortScore(a), getSortScore(b)));
+async function loadAndRender() {
+    const paths = [
+        '../../results/model_eval_results.json',
+        '/results/model_eval_results.json',
+        'model_eval_results.json'
+    ];
 
-    renderHeroMeta(data.metadata);
-    renderSnapshot(rows);
-    renderNotes(data.metadata.notes);
+    let payload = null;
+    let lastError = null;
 
-    renderBarChart('apChart', rows.filter((row) => getPrimaryAp(row) !== null), {
-        getValue: getPrimaryAp,
-        format: (value) => formatMetric(value, 1),
-        fillClass: '',
-        lowerIsBetter: false
-    });
+    for (const path of paths) {
+        try {
+            const response = await fetch(path, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            payload = await response.json();
+            break;
+        } catch (error) {
+            lastError = error;
+        }
+    }
 
-    renderBarChart('latencyChart', rows.filter((row) => getLatency(row) !== null), {
-        getValue: getLatency,
-        format: (value) => formatMetric(value, 2, ' ms'),
-        fillClass: 'alt',
-        lowerIsBetter: true
-    });
+    if (!payload) {
+        const body = document.getElementById('comparisonTableBody');
+        const isFileProtocol = window.location.protocol === 'file:';
+        const hint = isFileProtocol
+            ? 'Open this page through a local HTTP server (not file://), e.g. from repo root: python3 -m http.server 8000 and visit http://localhost:8000/frontend/model-comparison/index.html'
+            : 'Verify that results/model_eval_results.json is reachable from the current host.';
+        body.innerHTML = `<tr><td colspan="10">Failed to load results JSON. ${String(lastError || '')}<br>${hint}</td></tr>`;
+        return;
+    }
 
-    renderBarChart('fpsChart', rows.filter((row) => getFps(row) !== null), {
-        getValue: getFps,
-        format: (value) => formatMetric(value, 0, ' FPS'),
-        fillClass: 'danger',
-        lowerIsBetter: false
-    });
-
-    renderModelCards(rows);
-    renderComparisonTable(rows);
+    const rows = modelRows(payload);
+    renderHeroMeta(payload);
+    renderSnapshot(payload, rows);
+    renderF1Chart(rows);
+    renderThroughputChart(rows);
+    renderTable(rows);
 }
 
-buildPage();
+loadAndRender();
