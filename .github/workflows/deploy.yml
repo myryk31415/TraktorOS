@@ -15,7 +15,10 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/TraktorOS || git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
+            sudo dnf install -y git python3-pip
+            if [ ! -d ~/TraktorOS ]; then
+              git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
+            fi
             cd ~/TraktorOS
             git pull origin main
             pip3 install -r requirements.txt --quiet
