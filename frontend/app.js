@@ -484,7 +484,7 @@ function displayResults(imageData, detections) {
             // Draw label
             const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
             const proxLabel = detection.proximity ? ` — ${detection.proximity}` : '';
-            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%${proxLabel}` + (inCorridor ? ' ⚠ IN PATH' : '');
+            const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%${proxLabel}`;
             ctx.fillText(label, x1, y1 - 5);
         });
 
