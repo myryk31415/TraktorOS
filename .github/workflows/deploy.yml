@@ -16,7 +16,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 30m
           script: |
-            sudo dnf install -y git python3-pip nginx
+            sudo dnf install -y git python3-pip nginx libxcb
             if [ ! -d ~/TraktorOS ]; then
               git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
             fi
