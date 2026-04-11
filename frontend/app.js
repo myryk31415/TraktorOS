@@ -44,19 +44,8 @@ const bedrockSkeleton = document.getElementById('bedrockSkeleton');
 const bedrockEmpty = document.getElementById('bedrockEmpty');
 const bedrockResults = document.getElementById('bedrockResults');
 const bedrockDetections = document.getElementById('bedrockDetections');
-const activeModeBadge = document.getElementById('activeModeBadge');
-const selectedFileMeta = document.getElementById('selectedFileMeta');
-const detectionCountBadge = document.getElementById('detectionCountBadge');
-const detectionSummary = document.getElementById('detectionSummary');
 
 uploadBtn.disabled = true;
-setInitialUiState();
-
-document.querySelectorAll('input[name="mode"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-        updateModeBadge();
-    });
-});
 
 imageInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -66,9 +55,6 @@ imageInput.addEventListener('change', async (e) => {
         selectedImageDataUrl = null;
         uploadBtn.disabled = true;
         bedrockBtn.disabled = true;
-        if (detectionCountBadge) detectionCountBadge.textContent = '0';
-        if (selectedFileMeta) selectedFileMeta.textContent = 'No image selected';
-        if (detectionSummary) detectionSummary.textContent = 'No detections yet.';
         resetSelectedPreview();
         resetProcessedState();
         return;
@@ -77,7 +63,6 @@ imageInput.addEventListener('change', async (e) => {
     selectedImage = file;
     uploadBtn.disabled = false;
     bedrockBtn.disabled = false;
-    if (selectedFileMeta) selectedFileMeta.textContent = `${file.name} (${formatFileSize(file.size)})`;
 
     if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
@@ -496,10 +481,6 @@ function displayResults(imageData, detections) {
             detectionInfoHeading.textContent = detections.length ? 'Detected objects' : 'Detection results';
             detectionInfoHeading.classList.remove('d-none');
         }
-        if (detectionCountBadge) detectionCountBadge.textContent = String(detections.length);
-        if (detectionSummary) detectionSummary.textContent = detections.length
-            ? `Detected ${formatDetectionSummary(detections)} in the current frame.`
-            : 'No detections in the latest run.';
         detectionInfo.innerHTML = detections.length
             ? detections.map((detection, index) => {
                 const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
@@ -524,27 +505,9 @@ function displayResults(imageData, detections) {
     img.src = imageData;
 }
 
-function setInitialUiState() {
-    updateModeBadge();
-    if (detectionCountBadge) detectionCountBadge.textContent = '0';
-}
-
 function formatDetectionClass(value) {
     const normalized = String(value || 'object').trim().replace(/[_-]+/g, ' ');
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
-function formatDetectionSummary(detections) {
-    const counts = new Map();
-
-    detections.forEach((detection) => {
-        const key = String(detection.class || detection.label || detection.category || 'object').trim().toLowerCase().replace(/[_-]+/g, ' ');
-        counts.set(key, (counts.get(key) || 0) + 1);
-    });
-
-    return Array.from(counts.entries())
-        .map(([className, count]) => `${count} ${count === 1 ? className : `${className}s`}`)
-        .join(', ');
 }
 
 function formatQualityMetrics(metrics) {
@@ -566,19 +529,4 @@ function formatQualityMetrics(metrics) {
             `).join('')}
         </span>
     `;
-}
-
-function updateModeBadge() {
-    const mode = document.querySelector('input[name="mode"]:checked')?.value || 'local';
-    if (!activeModeBadge) return;
-    activeModeBadge.textContent = mode === 'sagemaker' ? 'SageMaker' : 'Local';
-}
-
-function formatFileSize(bytes) {
-    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const power = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    const value = bytes / (1024 ** power);
-    return `${value.toFixed(power === 0 ? 0 : 1)} ${units[power]}`;
 }
