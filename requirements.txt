@@ -4,6 +4,6 @@ flask
 flask-cors
 pillow
 boto3
-opencv-python-headless
+opencv-contrib-python-headless
 timm
 numpy
