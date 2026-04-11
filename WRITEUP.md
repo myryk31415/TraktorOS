@@ -24,6 +24,8 @@ The entire system is deployed on AWS EC2 with a web-based dashboard, CI/CD via G
 
 ## 2. Technical Approach
 
+The end goal of our pipeline is to produce concrete actions for the tractor: **STOP** (emergency halt), **HONK** (audible warning), **CORRECT LEFT/RIGHT** (steer to avoid an obstacle), **CONTINUE** (path is clear), or **MAINTENANCE** (flag an issue for the farmer to address later, e.g. overhanging branches, damaged fences). Every component described below feeds into this decision.
+
 ### 2.1 Image Quality Gate
 
 Before trusting any detection, we assess image quality using:
@@ -35,7 +37,7 @@ If quality is insufficient, the system recommends STOP — because unreliable se
 
 ### 2.2 Detection Pipeline
 
-Detecting humans in digital images is a complex computer vision challenge that requires to utilize both spatial localization and object classification. In machine learning, this problem is generally approached through two distinct architectures: one-step detectors (mapping raw pixels directly to labeled bounding boxes) and two-step detectors (proposing regions of interest before classifying them).
+Once the image passes the quality gate, we run object detection. In machine learning, this problem is generally approached through two distinct architectures: one-step detectors (mapping raw pixels directly to labeled bounding boxes) and two-step detectors (proposing regions of interest before classifying them).
 
 Initially, we considered YOLO (You Only Look Once), a prominent state-of-the-art one-step solution. For a rigorous performance comparison, we also evaluated Faster R-CNN with a ResNet-50 backbone, a classic two-step architecture. It is important to note that for this evaluation, we utilized pre-trained models rather than training from scratch, allowing us to leverage features learned from large-scale datasets like COCO.
 
@@ -49,7 +51,7 @@ Both run locally on the machine with no external API calls, ensuring data stays 
 
 ### 2.3 Depth Estimation
 
-**MiDaS** provides monocular depth estimation for every frame. For each detected object, we sample the depth in the lower half of the bounding box (feet/base area) and classify proximity
+Knowing *what* is in the frame is not enough — we also need to know *how far away* it is. A person 50 meters ahead requires a different response than one 2 meters in front of the tractor. Since we work with a single camera, we use **MiDaS** for monocular depth estimation. For each detected object, we sample the depth in the lower half of the bounding box (feet/base area) and classify proximity into three levels. This depth information feeds directly into the action decision tree.
 
 ### 2.4 Tractor Path Modeling
 
