@@ -162,7 +162,18 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div id="qualityBanner" class="quality-banner d-none"></div>
+                                <div class="accordion mb-3 d-none" id="qualityAccordion">
+                                    <div class="accordion-item bg-transparent border">
+                                        <h3 class="accordion-header" id="qualityHeading">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#qualityCollapse" aria-expanded="false" aria-controls="qualityCollapse">
+                                                <span id="qualityBannerTitle">Image quality</span>
+                                            </button>
+                                        </h3>
+                                        <div id="qualityCollapse" class="accordion-collapse collapse" aria-labelledby="qualityHeading" data-bs-parent="#qualityAccordion">
+                                            <div class="accordion-body pt-3" id="qualityDetails"></div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <h3 id="detectionInfoHeading" class="h6 mb-2 d-none">Detected objects</h3>
                                 <div id="detectionInfo" class="detection-info"></div>
                                 <div class="accordion mt-3 d-none" id="depthMapAccordion">

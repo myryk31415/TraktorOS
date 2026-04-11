@@ -114,34 +114,26 @@ async function runOnDeviceAnalysis(endpoint, mode) {
 
         const result = await detectionRes.json();
 
-        // Show quality banner
-        const qualityBanner = document.getElementById('qualityBanner');
+        // Show quality accordion
         let qualityData = null;
         if (qualityRes) {
             qualityData = await qualityRes.json();
             lastQualityData = qualityData;
             const q = qualityData;
-            qualityBanner.classList.remove('d-none', 'quality-good', 'quality-warn');
-            const metricsHtml = formatQualityMetrics(q.metrics || {});
+            const qualityAccordion = document.getElementById('qualityAccordion');
+            const qualityTitle = document.getElementById('qualityBannerTitle');
+            const qualityDetails = document.getElementById('qualityDetails');
+            const qualityItem = qualityAccordion.querySelector('.accordion-item');
+            qualityItem.classList.remove('quality-good', 'quality-warn');
+            qualityAccordion.classList.remove('d-none');
             if (q.sufficient) {
-                qualityBanner.classList.add('quality-good');
-                qualityBanner.innerHTML = `
-                    <span class="quality-main">
-                        <img class="quality-icon" src="icons/checkmark-outline.svg" alt="" aria-hidden="true">
-                        <span class="quality-title">Image quality OK</span>
-                    </span>
-                    ${metricsHtml}
-                `;
+                qualityItem.classList.add('quality-good');
+                qualityTitle.textContent = '✓ Image quality OK';
             } else {
-                qualityBanner.classList.add('quality-warn');
-                qualityBanner.innerHTML = `
-                    <span class="quality-main">
-                        <img class="quality-icon" src="icons/alert-outline.svg" alt="" aria-hidden="true">
-                        <span class="quality-title">${escapeHtml((q.issues || []).join(', ') || 'Quality issues detected')}</span>
-                    </span>
-                    ${metricsHtml}
-                `;
+                qualityItem.classList.add('quality-warn');
+                qualityTitle.textContent = '⚠ ' + (q.issues || []).join(', ');
             }
+            qualityDetails.innerHTML = formatQualityMetrics(q.metrics || {});
         }
 
         displayResults(selectedImageDataUrl, result.detections || []);
@@ -373,8 +365,8 @@ function resetProcessedState() {
     if (detectionInfoHeading) detectionInfoHeading.classList.add('d-none');
     detectionInfo.innerHTML = '';
     ctx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
-    const qb = document.getElementById('qualityBanner');
-    if (qb) qb.classList.add('d-none');
+    const qa = document.getElementById('qualityAccordion');
+    if (qa) qa.classList.add('d-none');
     const dc = document.getElementById('depthMapContainer');
     if (dc) dc.classList.add('d-none');
     const de = document.getElementById('depthMapEmpty');

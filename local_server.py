@@ -286,7 +286,7 @@ def quality():
             score = cv2.quality.QualityBRISQUE_compute(img, BRISQUE_MODEL, BRISQUE_RANGE)
             metrics['brisque'] = round(score[0], 1)
             if score[0] > 60:
-                issues.append('Poor BRISQUE')
+                issues.append('Poor image quality')
         except Exception:
             pass
 
@@ -299,7 +299,7 @@ def quality():
             score = float((torch.arange(1, 11, dtype=torch.float32).to(device) * probs).sum())
             metrics['nima'] = round(score, 1)
             if score < 3.5:
-                issues.append('Low NIMA')
+                issues.append('Low aesthetic quality')
         except Exception:
             pass
 

@@ -766,7 +766,8 @@ body {
 }
 
 #pathSettingsAccordion .accordion-item,
-#depthMapAccordion .accordion-item {
+#depthMapAccordion .accordion-item,
+#qualityAccordion .accordion-item {
     border-radius: 14px;
     border: 1px solid rgba(137, 200, 219, 0.24) !important;
     overflow: hidden;
@@ -775,7 +776,8 @@ body {
 }
 
 #pathSettingsAccordion .accordion-button,
-#depthMapAccordion .accordion-button {
+#depthMapAccordion .accordion-button,
+#qualityAccordion .accordion-button {
     background: rgba(7, 21, 31, 0.72);
     color: #e6f7ff;
     border: 0;
@@ -788,24 +790,28 @@ body {
 }
 
 #pathSettingsAccordion .accordion-button:not(.collapsed),
-#depthMapAccordion .accordion-button:not(.collapsed) {
+#depthMapAccordion .accordion-button:not(.collapsed),
+#qualityAccordion .accordion-button:not(.collapsed) {
     background: linear-gradient(135deg, rgba(94, 234, 212, 0.18), rgba(34, 211, 238, 0.12));
     color: #eaffff;
 }
 
 #pathSettingsAccordion .accordion-button:focus,
-#depthMapAccordion .accordion-button:focus {
+#depthMapAccordion .accordion-button:focus,
+#qualityAccordion .accordion-button:focus {
     box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.55);
 }
 
 #pathSettingsAccordion .accordion-button::after,
-#depthMapAccordion .accordion-button::after {
+#depthMapAccordion .accordion-button::after,
+#qualityAccordion .accordion-button::after {
     filter: brightness(0) saturate(100%) invert(89%) sepia(22%) saturate(378%) hue-rotate(128deg) brightness(98%) contrast(96%);
     opacity: 0.9;
 }
 
 #pathSettingsAccordion .accordion-body,
-#depthMapAccordion .accordion-body {
+#depthMapAccordion .accordion-body,
+#qualityAccordion .accordion-body {
     border-top: 1px solid rgba(137, 200, 219, 0.16);
     background: rgba(6, 22, 30, 0.52);
     padding: 0.95rem 1rem 1rem;
@@ -844,4 +850,17 @@ body {
 }
 .form-range::-webkit-slider-runnable-track {
     background: rgba(148, 163, 184, 0.25);
+}
+
+#qualityAccordion .accordion-item.quality-good {
+    border-color: rgba(34, 197, 94, 0.4) !important;
+}
+#qualityAccordion .accordion-item.quality-good .accordion-button {
+    background: rgba(34, 197, 94, 0.1);
+}
+#qualityAccordion .accordion-item.quality-warn {
+    border-color: rgba(234, 179, 8, 0.4) !important;
+}
+#qualityAccordion .accordion-item.quality-warn .accordion-button {
+    background: rgba(234, 179, 8, 0.1);
 }
