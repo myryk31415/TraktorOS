@@ -117,21 +117,13 @@ The decision tree is deterministic and auditable. Every action can be traced bac
 
 ---
 
-## 5. Innovation & Future Vision
+## 5. Future Vision
 
-### Edge Deployment
-The decision tree is pure JavaScript running client-side — it requires zero additional resources. On a real harvester, the detection models run on an onboard GPU (e.g., NVIDIA Jetson), while the decision tree runs on the vehicle's main controller. The Bedrock analysis would only be used when connectivity is available, as a secondary validation layer.
+### Time Series Data
+Currently each frame is analyzed independently. By incorporating temporal context — tracking objects across frames — we can predict trajectories, distinguish a person walking toward the path from one walking away, and reduce false positives from momentary misdetections. Time series data also enables speed estimation, which directly improves the accuracy of our action decisions.
 
-### Handling False Positives
-Our multi-layered approach inherently reduces false positive impact:
-- The **depth estimation** layer filters out detections that are far away and not in the path
-- The **path corridor** ignores objects outside the tractor's trajectory
-- The **decision tree** differentiates between moving and stationary objects — a scarecrow (stationary, not moving) gets a steering correction rather than an emergency stop
-- The **quality gate** prevents decisions based on degraded sensor input
+### Fine-Tuned Models
+Our current pipeline uses pretrained models (COCO weights). Fine-tuning on agriculture-specific datasets like the one provided would dramatically improve detection in the conditions that matter most: people partially hidden by crops, dust-obscured animals, and farm equipment in unusual positions. The modular architecture makes swapping models straightforward — the decision tree and UI remain unchanged.
 
-### Beyond Human Detection
-The system already detects vehicles, animals, and obstacles. The Bedrock analysis adds ground assessment and maintenance detection. Future extensions:
-- **Crop health monitoring** using the same camera feed
-- **Fence line detection** for autonomous boundary following
-- **Weather condition assessment** for operational decisions
-- **Fleet coordination** — sharing detected hazards across multiple machines
+### Real-Time Streaming
+The current system processes individual uploaded images. The natural next step is real-time video streaming from the tractor's camera, with continuous action recommendations updating live. This would turn TraktorOS from a demo into an operational safety system — a constant feed of detections, depth estimates, and actions rendered on a dashboard mounted in the cabin or fed directly into the vehicle's control system.
