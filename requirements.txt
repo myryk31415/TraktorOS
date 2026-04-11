@@ -6,3 +6,4 @@ pillow
 boto3
 opencv-python-headless
 timm
+numpy
