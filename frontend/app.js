@@ -648,11 +648,21 @@ function computeActions(detections, qualityData) {
 
         if (isMoving) {
             if (prox === 'VERY CLOSE' || prox === 'NEAR') {
-                shouldStop = true;
-                stopReasons.push(`${name} very close`);
+                if (inPath) {
+                    shouldStop = true;
+                    stopReasons.push(`${name} very close in path`);
+                } else {
+                    shouldHonk = true;
+                    honkReasons.push(`${name} very close`);
+                }
             } else if (prox === 'NEARBY' || prox === 'MEDIUM') {
-                shouldStop = true;
-                stopReasons.push(`${name} nearby`);
+                if (inPath) {
+                    shouldStop = true;
+                    stopReasons.push(`${name} nearby in path`);
+                } else {
+                    shouldHonk = true;
+                    honkReasons.push(`${name} nearby`);
+                }
             } else if (inPath) {
                 shouldHonk = true;
                 honkReasons.push(`${name} in path ahead`);
