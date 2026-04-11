@@ -78,6 +78,11 @@ imageInput.addEventListener('change', async (e) => {
 });
 
 uploadBtn.addEventListener('click', async () => {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    await runOnDeviceAnalysis(ENDPOINTS[mode], mode);
+});
+
+async function runOnDeviceAnalysis(endpoint, mode) {
     if (!selectedImage || !selectedImageDataUrl) return;
 
     uploadBtn.disabled = true;
@@ -85,12 +90,11 @@ uploadBtn.addEventListener('click', async () => {
     setProcessingState(true);
 
     try {
-        const mode = document.querySelector('input[name="mode"]:checked').value;
         const imagePayload = JSON.stringify({ image: selectedImageDataUrl.split(',')[1] });
 
         // Run detection and quality check in parallel
         const [detectionRes, qualityRes] = await Promise.all([
-            fetch(ENDPOINTS[mode], {
+            fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: imagePayload
@@ -150,10 +154,9 @@ uploadBtn.addEventListener('click', async () => {
         
     } catch (error) {
         console.error('Detection error:', error);
-        const mode = document.querySelector('input[name="mode"]:checked').value;
         let msg = `Detection failed (${mode} mode):\n\n${error.message}`;
         if (error.message === 'Failed to fetch') {
-            msg += `\n\nCannot reach server at ${ENDPOINTS[mode]}. Is the backend running?`;
+            msg += `\n\nCannot reach server at ${endpoint}. Is the backend running?`;
         }
         alert(msg);
         setProcessingState(false);
@@ -161,7 +164,7 @@ uploadBtn.addEventListener('click', async () => {
         imageInput.disabled = false;
         uploadBtn.disabled = !selectedImage;
     }
-});
+}
 
 async function runAnalysis(endpoint) {
     if (!selectedImageDataUrl) return;
@@ -339,7 +342,12 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-bedrockBtn.addEventListener('click', () => runAnalysis(ENDPOINTS.bedrock));
+bedrockBtn.addEventListener('click', async () => {
+    await Promise.all([
+        runAnalysis(ENDPOINTS.bedrock),
+        runOnDeviceAnalysis(ENDPOINTS.local, 'local')
+    ]);
+});
 
 function resetSelectedPreview() {
     if (previewObjectUrl) {
