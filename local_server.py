@@ -131,7 +131,7 @@ BEDROCK_PROMPT = """Analyze this image from an autonomous tractor's camera. Resp
 {
   "image_quality": {
     "sufficient_for_human_detection": true/false,
-    "issues": ["list of quality issues if any, e.g. too dark, blurry, overexposed, dust, lense flair. If it is good, just return sufficiant"]
+    "issues": ["list of quality issues if any, e.g. too dark, blurry, overexposed, dust, lense flair. If it is good, just return sufficient"]
   },
   "obstacles": [
     {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk. Max 8 words."}
@@ -195,15 +195,15 @@ def quality():
 
     issues = []
     if blur < 100:
-        issues.append('blurry')
+        issues.append('Blurry')
     if brightness < 40:
-        issues.append('too dark')
+        issues.append('Too dark')
     elif brightness > 220:
-        issues.append('overexposed')
+        issues.append('Overexposed')
     if contrast < 20:
-        issues.append('low contrast')
+        issues.append('Low contrast')
     if w < 320 or h < 240:
-        issues.append('low resolution')
+        issues.append('Low resolution')
 
     return jsonify({
         'sufficient': len(issues) == 0,
