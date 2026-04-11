@@ -117,6 +117,11 @@ uploadBtn.addEventListener('click', async () => {
             }).catch(() => null)
         ]);
 
+        if (!detectionRes.ok) {
+            const text = await detectionRes.text();
+            throw new Error(`Server returned ${detectionRes.status}: ${text.slice(0, 200)}`);
+        }
+
         const result = await detectionRes.json();
 
         // Show quality banner
@@ -159,8 +164,13 @@ uploadBtn.addEventListener('click', async () => {
         if (statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
         
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error processing image. Please try again.');
+        console.error('Detection error:', error);
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        let msg = `Detection failed (${mode} mode):\n\n${error.message}`;
+        if (error.message === 'Failed to fetch') {
+            msg += `\n\nCannot reach server at ${ENDPOINTS[mode]}. Is the backend running?`;
+        }
+        alert(msg);
         setProcessingState(false);
     } finally {
         imageInput.disabled = false;
