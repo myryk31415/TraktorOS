@@ -31,8 +31,7 @@ jobs:
             sudo rm -f /etc/nginx/conf.d/default.conf
             sudo nginx -t && sudo systemctl restart nginx
             sudo systemctl enable nginx
-            sudo pkill -f local_server.py || true
-            sleep 1
-            sudo setsid nohup python3 ~/TraktorOS/local_server.py > ~/TraktorOS/server.log 2>&1 &
-            sleep 2
-            pgrep -f local_server.py && echo "Server started" || echo "Server failed to start"
+            sudo cp traktoros.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl restart traktoros
+            sudo systemctl enable traktoros
