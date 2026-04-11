@@ -161,7 +161,7 @@ uploadBtn.addEventListener('click', async () => {
             depthContainer.classList.remove('d-none');
             document.getElementById('depthMapEmpty')?.classList.add('d-none');
         }
-        if (statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
+        if (typeof statusHint !== 'undefined' && statusHint) statusHint.textContent = 'Detection completed. You can now inspect details or run analysis.';
         
     } catch (error) {
         console.error('Detection error:', error);
