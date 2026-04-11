@@ -16,7 +16,7 @@ The system processes each image through three layers:
 1. **Image Quality Gate** — BRISQUE, NIMA, and classical CV metrics verify the sensor input is reliable. If not, the tractor stops.
 2. **On-Device Analysis** — Object detection (Faster R-CNN / YOLO11x) and monocular depth estimation (MiDaS) identify obstacles, estimate their distance, and determine if they are in the tractor's path. A decision tree translates this into real-time actions.
 
-Both of these run entirely on the tractor's onboard hardware — no internet connection required, enabling split-second decisions in the field.
+Both of these run entirely on the tractor's onboard hardware — no internet connection required, enabling fast decisions in the field.
 
 3. **Thorough Analysis** — When connectivity is available, Amazon Bedrock (Nova Pro) provides deeper scene understanding: ground conditions, upcoming turns, and maintenance issues like overhanging branches that the farmer should address.
 
