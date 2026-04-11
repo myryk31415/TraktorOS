@@ -106,9 +106,9 @@ def detect():
             rel_depth = float(region.mean()) if region.size > 0 else 0.0
 
             if rel_depth > 0.6:
-                proximity = 'NEAR'
+                proximity = 'VERY CLOSE'
             elif rel_depth > 0.3:
-                proximity = 'MEDIUM'
+                proximity = 'NEARBY'
             else:
                 proximity = 'FAR'
 

@@ -448,17 +448,13 @@ function displayResults(imageData, detections) {
             const width = x2 - x1;
             const height = y2 - y1;
 
-            // Check if detection bottom-center point is inside the trapezoid
-            // Use bottom point (y2) as it's closest to ground, center X for horizontal position
-            const bCenterX = (x1 + x2) / 2;
-            const bBottomY = y2;
-            let inCorridor = false;
-            if (bBottomY > horizonY) {
-                const t = (bBottomY - horizonY) / (img.height - horizonY);
-                const edgeLeft = cx + (bottomLeft - cx) * t;
-                const edgeRight = cx + (bottomRight - cx) * t;
-                inCorridor = bCenterX > edgeLeft && bCenterX < edgeRight;
-            }
+            const inCorridor = isDetectionInCorridor(detection.bbox, {
+                horizonY,
+                imageHeight: img.height,
+                centerX: cx,
+                bottomLeft,
+                bottomRight
+            });
 
             ctx.strokeStyle = inCorridor ? '#ef4444' : '#00ff00';
             ctx.fillStyle = ctx.strokeStyle;
@@ -468,7 +464,8 @@ function displayResults(imageData, detections) {
             
             // Draw label
             const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
-            const proxLabel = detection.proximity ? ` — ${detection.proximity}` : '';
+            const proximityText = formatProximityLabel(detection.proximity);
+            const proxLabel = proximityText ? ` — ${proximityText}` : '';
             const label = `${detectionClass} ${(detection.confidence * 100).toFixed(1)}%${proxLabel}`;
             ctx.fillText(label, x1, y1 - 5);
         });
@@ -485,17 +482,27 @@ function displayResults(imageData, detections) {
             ? detections.map((detection, index) => {
                 const detectionClass = formatDetectionClass(detection.class || detection.label || detection.category || 'object');
                 const proximityClassMap = {
-                    NEAR: 'proximity-badge-near',
-                    MEDIUM: 'proximity-badge-medium',
+                    'VERY CLOSE': 'proximity-badge-near',
+                    NEARBY: 'proximity-badge-medium',
                     FAR: 'proximity-badge-far'
                 };
-                const proximityText = String(detection.proximity || '').trim().toUpperCase();
+                const proximityText = formatProximityLabel(detection.proximity);
                 const proxBadge = proximityText
                     ? `<span class="badge proximity-badge ${proximityClassMap[proximityText] || 'proximity-badge-far'}">${escapeHtml(proximityText)}</span>`
                     : '';
+                const inCorridor = isDetectionInCorridor(detection.bbox, {
+                    horizonY,
+                    imageHeight: img.height,
+                    centerX: cx,
+                    bottomLeft,
+                    bottomRight
+                });
+                const inPathBadge = inCorridor
+                    ? '<span class="badge bg-danger ms-1">IN PATH</span>'
+                    : '';
                 return `
                     <div class="detection-item">
-                        <span class="detection-label">${detectionClass} ${index + 1} ${proxBadge}</span>
+                        <span class="detection-label">${detectionClass} ${index + 1} ${proxBadge}${inPathBadge}</span>
                         <span class="detection-confidence">${(detection.confidence * 100).toFixed(1)}%</span>
                     </div>
                 `;
@@ -508,6 +515,28 @@ function displayResults(imageData, detections) {
 function formatDetectionClass(value) {
     const normalized = String(value || 'object').trim().replace(/[_-]+/g, ' ');
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatProximityLabel(value) {
+    const normalized = String(value || '').trim().toUpperCase();
+    if (normalized === 'NEAR' || normalized === 'CLOSE') return 'VERY CLOSE';
+    if (normalized === 'MEDIUM') return 'NEARBY';
+    return normalized;
+}
+
+function isDetectionInCorridor(bbox, corridor) {
+    const [x1, , x2, y2] = bbox;
+    const bCenterX = (x1 + x2) / 2;
+    const bBottomY = y2;
+
+    if (bBottomY <= corridor.horizonY) {
+        return false;
+    }
+
+    const t = (bBottomY - corridor.horizonY) / (corridor.imageHeight - corridor.horizonY);
+    const edgeLeft = corridor.centerX + (corridor.bottomLeft - corridor.centerX) * t;
+    const edgeRight = corridor.centerX + (corridor.bottomRight - corridor.centerX) * t;
+    return bCenterX > edgeLeft && bCenterX < edgeRight;
 }
 
 function formatQualityMetrics(metrics) {

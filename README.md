@@ -77,7 +77,7 @@ Open `frontend/index.html` in your browser. The frontend auto-detects `file://` 
 ## Detection Features
 
 - **Object detection**: Faster R-CNN pretrained on COCO — detects people, vehicles, animals, and farm-relevant objects
-- **Depth estimation**: MiDaS monocular depth — classifies detections as NEAR/MEDIUM/FAR
+- **Depth estimation**: MiDaS monocular depth — classifies detections as VERY CLOSE/NEARBY/FAR
 - **Tractor path overlay**: Configurable corridor with horizon line to highlight objects in the tractor's path
 - **Image quality check**: Blur, brightness, contrast, and resolution analysis
 - **Scene analysis**: Amazon Bedrock (Nova Pro) for soil assessment, obstacle severity, and safety summary
