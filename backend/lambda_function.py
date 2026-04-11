@@ -4,7 +4,7 @@ import boto3
 import os
 
 # SageMaker endpoint name (set via environment variable)
-ENDPOINT_NAME = os.environ.get('SAGEMAKER_ENDPOINT', 'traktoros-human-detection')
+ENDPOINT_NAME = os.environ.get('SAGEMAKER_ENDPOINT', 'Traktoros-human-detection')
 
 # Initialize SageMaker runtime client
 sagemaker_runtime = boto3.client('sagemaker-runtime')

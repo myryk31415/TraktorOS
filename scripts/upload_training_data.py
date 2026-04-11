@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 # Configuration
-BUCKET_NAME = 'traktoros-training-data'  # Change this to your bucket name
+BUCKET_NAME = 'Traktoros-training-data'  # Change this to your bucket name
 REGION = 'us-east-1'  # Change to your region
 
 def create_bucket_if_not_exists(s3_client, bucket_name, region):
@@ -57,7 +57,7 @@ def upload_directory(s3_client, local_dir, bucket_name, s3_prefix):
     print(f"✓ Uploaded {uploaded} files")
 
 def main():
-    print("🚜 TraktorOS Training Data Upload")
+    print("🚜 Traktoros Training Data Upload")
     print("=" * 50)
     
     # Initialize S3 client

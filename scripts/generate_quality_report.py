@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     html = f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TraktorOS Image Quality Report</title>
+<title>Traktoros Image Quality Report</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0c1728;color:#e5eef7;padding:2rem}}
@@ -121,7 +121,7 @@ td:nth-child(2){{width:45px;text-align:right;padding-right:.5rem;font-variant-nu
 .bar-fill{{height:100%;border-radius:3px}}
 .meta{{font-size:.7rem;color:#64748b;margin-top:.5rem;text-align:right}}
 </style></head><body>
-<h1>🚜 TraktorOS Image Quality Report</h1>
+<h1>🚜 Traktoros Image Quality Report</h1>
 <p class="subtitle">{len(results)} images analyzed</p>
 <div class="stats">
   <div class="stat"><div class="stat-value">{len(results)}</div><div class="stat-label">Total</div></div>

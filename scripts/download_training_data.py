@@ -3,7 +3,7 @@
 import boto3
 import os
 
-BUCKET_NAME = 'traktoros-training-data'
+BUCKET_NAME = 'Traktoros-training-data'
 REGION = 'us-east-1'
 LOCAL_DIR = 'data/training'
 

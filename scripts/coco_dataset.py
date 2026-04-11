@@ -11,7 +11,7 @@ import torch
 from PIL import Image
 from torchvision.tv_tensors import BoundingBoxes
 
-BUCKET_NAME = "traktoros-training-data"
+BUCKET_NAME = "Traktoros-training-data"
 
 
 class CocoDetectionDataset(torch.utils.data.Dataset):

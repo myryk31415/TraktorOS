@@ -22,7 +22,7 @@ from coco_dataset import CocoDetectionDataset
 
 import boto3
 
-BUCKET_NAME = "traktoros-training-data"
+BUCKET_NAME = "Traktoros-training-data"
 
 MODEL_TYPES = [
     # "fasterrcnn",

@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Configuration
 REGION = 'us-east-1'
-BUCKET_NAME = 'traktoros-training-data'
+BUCKET_NAME = 'Traktoros-training-data'
 ROLE_NAME = 'SageMakerExecutionRole'  # You'll need to create this
 
 def get_or_create_role(iam_client, role_name):
@@ -55,7 +55,7 @@ def deploy_model(model_data_url, role_arn):
         py_version='py39',
     )
     
-    endpoint_name = f'traktoros-human-detection-{datetime.now().strftime("%Y%m%d-%H%M%S")}'
+    endpoint_name = f'Traktoros-human-detection-{datetime.now().strftime("%Y%m%d-%H%M%S")}'
     
     print(f"Deploying to endpoint: {endpoint_name}")
     print("This may take 5-10 minutes...")
@@ -69,7 +69,7 @@ def deploy_model(model_data_url, role_arn):
     return endpoint_name
 
 def main():
-    print("🚜 TraktorOS SageMaker Deployment")
+    print("🚜 Traktoros SageMaker Deployment")
     print("=" * 50)
     
     # Initialize clients

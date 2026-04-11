@@ -1,11 +1,11 @@
 [Unit]
-Description=TraktorOS Flask API
+Description=Traktoros Flask API
 After=network.target
 
 [Service]
 User=ec2-user
-WorkingDirectory=/home/ec2-user/TraktorOS
-EnvironmentFile=/home/ec2-user/.traktoros-env
+WorkingDirectory=/home/ec2-user/Traktoros
+EnvironmentFile=/home/ec2-user/.Traktoros-env
 ExecStart=/usr/bin/python3 local_server.py
 Restart=on-failure
 RestartSec=3

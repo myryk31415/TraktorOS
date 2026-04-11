@@ -3,13 +3,13 @@
 
 ---
 
-**Code**: [https://github.com/myryk31415/TraktorOS](https://github.com/myryk31415/TraktorOS) **Live demo**: [http://34.210.69.60](http://34.210.69.60)
+**Code**: [https://github.com/myryk31415/Traktoros](https://github.com/myryk31415/Traktoros) **Live demo**: [http://34.210.69.60](http://34.210.69.60)
 
 ---
 
 ## 1. Overview
 
-TraktorOS is a safety system for autonomous agricultural machinery that goes beyond detection — it decides what the tractor should do. We combine multiple computer vision techniques into a pipeline that takes a camera image and outputs concrete actions: stop, honk, steer, or continue.
+Traktoros is a safety system for autonomous agricultural machinery that goes beyond detection — it decides what the tractor should do. We combine multiple computer vision techniques into a pipeline that takes a camera image and outputs concrete actions: stop, honk, steer, or continue.
 
 The system processes each image through three layers:
 
@@ -83,14 +83,6 @@ These results feed back into the action recommendations: unsafe ground triggers 
 
 ## 3. Architecture
 
-```
-User → nginx (:80) → Static Frontend (HTML/CSS/JS)
-                   → Flask API (:5000) → Faster R-CNN / YOLO11x (object detection)
-                                       → MiDaS (depth estimation)
-                                       → BRISQUE + NIMA (quality assessment)
-                                       → Amazon Bedrock Nova Pro (scene analysis)
-```
-
 - **Frontend**: Bootstrap 5 dashboard with real-time canvas rendering of detections, depth maps, and action cards
 - **Backend**: Flask service running PyTorch models locally on the onboard machine
 - **Infrastructure**: EC2 t3.xlarge (4 vCPU, 16GB RAM), nginx reverse proxy, GitHub Actions CI/**CD**
@@ -130,4 +122,4 @@ Currently each frame is analyzed independently. By incorporating temporal contex
 Our current pipeline uses pretrained models (COCO weights). Fine-tuning on agriculture-specific datasets like the one provided would dramatically improve detection in the conditions that matter most: people partially hidden by crops, dust-obscured animals, and farm equipment in unusual positions. The modular architecture makes swapping models straightforward — the decision tree and UI remain unchanged.
 
 ### Real-Time Streaming
-The current system processes individual uploaded images. The natural next step is real-time video streaming from the tractor's camera, with continuous action recommendations updating live. This would turn TraktorOS from a demo into an operational safety system — a constant feed of detections, depth estimates, and actions rendered on a dashboard mounted in the cabin or fed directly into the vehicle's control system.
+The current system processes individual uploaded images. The natural next step is real-time video streaming from the tractor's camera, with continuous action recommendations updating live. This would turn Traktoros from a demo into an operational safety system — a constant feed of detections, depth estimates, and actions rendered on a dashboard mounted in the cabin or fed directly into the vehicle's control system.

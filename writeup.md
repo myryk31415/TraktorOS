@@ -1,6 +1,6 @@
 # Autonomy in the Fields – Life-Saving Computer Vision
 
-## TraktorOS
+## Traktoros
 
 by Team undark.jena
 
