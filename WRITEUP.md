@@ -93,17 +93,17 @@ These results feed back into the action recommendations: unsafe ground triggers 
 ## 4. Evaluation
 
 ### Detection Performance
-We use pretrained models (Faster R-CNN on COCO, YOLO11x) which provide strong baseline performance on person detection. The COCO-pretrained Faster R-CNN achieves ~37.9 mAP on the COCO validation set, with person detection being one of its strongest categories.
+In our evaluation `fasterrcnn_v2` achieved the best detection quality among deployed candidates with F1=0.8895 (precision=0.9494, recall=0.8366), followed by `fasterrcnn` with F1=0.8497. `yolo11-x` and `yolo11-s` were faster (2.04-2.10 img/s vs 1.81-1.82 img/s for Faster R-CNN) but less accurate (F1=0.6797 and 0.5874 respectively).
 
 ### System Latency (Timing Breakdown)
 The `/detect` endpoint returns per-request timing:
 - **Image decode**: ~30-50ms
-- **Faster R-CNN inference**: ~800-1500ms (CPU)
-- **MiDaS depth estimation**: ~400-800ms (CPU)
-- **Post-processing**: ~50-100ms
-- **Total**: ~1.5-2.5s per frame on t3.xlarge (CPU-only)
+- **Faster R-CNN inference**: ~2000-3000ms (CPU)
+- **MiDaS depth estimation**: ~30-60ms (CPU)
+- **Post-processing**: ~10ms
+- **Total**: ~2.0-3.0s per frame (CPU-only)
 
-With GPU acceleration (e.g., ml.g4dn instance), inference would drop to ~100-200ms total.
+With GPU acceleration (e.g., ml.g4dn instance), inference would drop to ~500-600ms total.
 
 ### Quality Assessment
 BRISQUE scores correlate with detection reliability — images scoring >60 (poor) show measurably lower detection confidence, validating our quality gate approach.

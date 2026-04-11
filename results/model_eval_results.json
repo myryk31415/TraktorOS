@@ -1,0 +1,102 @@
+{
+  "settings": {
+    "local": false,
+    "confidence_threshold": 0.7,
+    "iou_threshold": 0.5,
+    "person_category_id": 1,
+    "max_images": null,
+    "device": "cuda",
+    "model_types": [
+      "fasterrcnn",
+      "fasterrcnn_v2",
+      "rfdetr-large",
+      "rfdetr-small",
+      "yolo11-x",
+      "yolo11-s"
+    ]
+  },
+  "summary": {
+    "overall_elapsed_seconds": 727.52,
+    "num_models": 6
+  },
+  "models": [
+    {
+      "model": "fasterrcnn",
+      "images_evaluated": 243,
+      "tp": 164,
+      "fp": 20,
+      "fn": 38,
+      "precision": 0.8913,
+      "recall": 0.8119,
+      "f1": 0.8497,
+      "mean_iou": 0.8585,
+      "elapsed_seconds": 134.45076789700033,
+      "throughput_images_per_second": 1.8073530095875447
+    },
+    {
+      "model": "fasterrcnn_v2",
+      "images_evaluated": 243,
+      "tp": 169,
+      "fp": 9,
+      "fn": 33,
+      "precision": 0.9494,
+      "recall": 0.8366,
+      "f1": 0.8895,
+      "mean_iou": 0.8684988864006534,
+      "elapsed_seconds": 133.59898232200067,
+      "throughput_images_per_second": 1.8188761304657297
+    },
+    {
+      "model": "rfdetr-large",
+      "images_evaluated": 243,
+      "tp": 135,
+      "fp": 1,
+      "fn": 67,
+      "precision": 0.9926,
+      "recall": 0.6683,
+      "f1": 0.7988,
+      "mean_iou": 0.8848,
+      "elapsed_seconds": 125.45416788199873,
+      "throughput_images_per_second": 1.9369623512912224
+    },
+    {
+      "model": "rfdetr-small",
+      "images_evaluated": 243,
+      "tp": 124,
+      "fp": 0,
+      "fn": 78,
+      "precision": 1.0000,
+      "recall": 0.6139,
+      "f1": 0.7607,
+      "mean_iou": 0.8641,
+      "elapsed_seconds": 120.81333876200006,
+      "throughput_images_per_second": 2.0113673083624093
+    },
+    {
+      "model": "yolo11-x",
+      "images_evaluated": 243,
+      "tp": 104,
+      "fp": 0,
+      "fn": 98,
+      "precision": 1.0,
+      "recall": 0.5149,
+      "f1": 0.6797,
+      "mean_iou": 0.9466813723246257,
+      "elapsed_seconds": 118.90737690000242,
+      "throughput_images_per_second": 2.043607439127648
+    },
+    {
+      "model": "yolo11-s",
+      "images_evaluated": 243,
+      "tp": 84,
+      "fp": 0,
+      "fn": 188,
+      "precision": 1.0,
+      "recall": 0.4158,
+      "f1": 0.5874,
+      "mean_iou": 0.9603832449231829,
+      "elapsed_seconds": 115.51970413199888,
+      "throughput_images_per_second": 2.1035372435020734
+    }
+  ]
+}
