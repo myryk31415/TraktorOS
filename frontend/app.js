@@ -1,4 +1,5 @@
-const SERVER = 'http://34.210.69.60:5000';
+// const SERVER = 'http://34.210.69.60:5000';
+const SERVER = 'http://localhost:5000';
 const ENDPOINTS = {
     local: `${SERVER}/detect`,
     sagemaker: 'YOUR_API_GATEWAY_URL',
