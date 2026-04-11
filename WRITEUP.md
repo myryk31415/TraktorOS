@@ -119,7 +119,7 @@ The decision tree is deterministic and auditable. Every action can be traced bac
 Currently each frame is analyzed independently. By incorporating temporal context — tracking objects across frames — we can predict trajectories, distinguish a person walking toward the path from one walking away, and reduce false positives from momentary misdetections. Time series data also enables speed estimation, which directly improves the accuracy of our action decisions.
 
 ### Fine-Tuned Models
-Our current pipeline uses pretrained models (COCO weights). Fine-tuning on agriculture-specific datasets like the one provided would dramatically improve detection in the conditions that matter most: people partially hidden by crops, dust-obscured animals, and farm equipment in unusual positions. The modular architecture makes swapping models straightforward — the decision tree and UI remain unchanged.
+Our current pipeline uses pretrained models. Fine-tuning on agriculture-specific datasets like the one provided would dramatically improve detection in the conditions that matter most: people partially hidden by crops, dust-obscured animals, and farm equipment in unusual positions. The modular architecture makes swapping models straightforward — the decision tree and UI remain unchanged.
 
 ### Real-Time Streaming
 The current system processes individual uploaded images. The natural next step is real-time video streaming from the tractor's camera, with continuous action recommendations updating live. This would turn Traktoros from a demo into an operational safety system — a constant feed of detections, depth estimates, and actions rendered on a dashboard mounted in the cabin or fed directly into the vehicle's control system.
