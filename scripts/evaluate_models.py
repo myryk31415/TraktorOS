@@ -174,10 +174,20 @@ def init_model(model_name: str, device: torch.device) -> Any:
         return model
 
     if model_name == "rfdetr-large":
-        return RFDETRLarge()
+        model = RFDETRLarge()
+        try:
+            model.optimize_for_inference()
+        except Exception as exc:
+            print(f"Warning: could not optimize {model_name} for inference: {exc}")
+        return model
 
     if model_name == "rfdetr-small":
-        return RFDETRSmall()
+        model = RFDETRSmall()
+        try:
+            model.optimize_for_inference()
+        except Exception as exc:
+            print(f"Warning: could not optimize {model_name} for inference: {exc}")
+        return model
 
     if model_name == "yolo11-x":
         model = YOLO("yolo11x.pt")
