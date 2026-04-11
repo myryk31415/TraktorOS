@@ -79,8 +79,43 @@ Open `frontend/index.html` in your browser. The frontend auto-detects `file://` 
 - **Object detection**: Faster R-CNN pretrained on COCO — detects people, vehicles, animals, and farm-relevant objects
 - **Depth estimation**: MiDaS monocular depth — classifies detections as VERY CLOSE/NEARBY/FAR
 - **Tractor path overlay**: Configurable corridor with horizon line to highlight objects in the tractor's path
-- **Image quality check**: Blur, brightness, contrast, and resolution analysis
+- **Image quality check**: BRISQUE, NIMA, blur, brightness, and contrast analysis
 - **Scene analysis**: Amazon Bedrock (Nova Pro) for soil assessment, obstacle severity, and safety summary
+
+## Action Decision Tree
+
+The system recommends tractor actions based on detected objects, their distance, and position relative to the tractor's path.
+
+**Pre-checks:**
+- Image quality insufficient → **STOP**
+- No objects detected → **CONTINUE**
+
+**Moving objects** (person, dog, horse, sheep, cow, bird):
+
+| Proximity | In path | Action |
+|-----------|---------|--------|
+| Very close | Yes | 🛑 STOP |
+| Very close | No | 📢 HONK |
+| Nearby | Yes | 🛑 STOP |
+| Nearby | No | 📢 HONK |
+| Far | Yes | 📢 HONK |
+| Far | No | — |
+
+**Stationary objects** (car, truck, bicycle, motorcycle, traffic light, stop sign, etc.):
+
+| Proximity | In path | Action |
+|-----------|---------|--------|
+| Very close | Yes | 🛑 STOP |
+| Nearby | Yes (left side) | ➡️ CORRECT RIGHT |
+| Nearby | Yes (right side) | ⬅️ CORRECT LEFT |
+| Far | Yes | ✅ CONTINUE |
+| Any | No | ✅ CONTINUE |
+
+**Multi-object rules:**
+- STOP overrides all other actions
+- HONK can combine with CORRECT LEFT/RIGHT
+- Obstacles on both sides (left and right corrections needed) → **STOP**
+- CONTINUE only if no other action applies
 
 ## SageMaker Setup (Custom Model Training)
 

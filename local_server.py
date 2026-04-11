@@ -277,25 +277,23 @@ bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 BEDROCK_PROMPT = """Analyze this image from an autonomous tractor's camera. Respond ONLY with JSON in this exact format, no other text:
 
 {
-  "image_quality": {
-    "issues": ["list of quality issues if any, e.g. too dark (e.g. night), blurry, overexposed, dust, lense flair. If it is good, just return sufficient, if it is obscured, warn that the detection results may be unreliable."]
-    "sufficient": true/false, # if not sufficient, this should be false
-  },
-  "obstacles": [
-    {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk. Max 8 words."}
-  ],
   "ground_assessment": {
     "surface_type": "asphalt/gravel/grass/mud/water/snow/ice/mixed",
     "safety_to_traverse": "safe/caution/unsafe",
     "hazards": ["list of hazards affecting traversability, e.g. waterlogged, muddy, icy, flooded, soft ground, steep slope"]
   },
+  "path_analysis": {
+    "path_type": "trail/road/field/none",
+    "turn_ahead": true/false,
+    "turn_direction": "left/right/none",
+    "turn_distance": "immediate/near/far/none",
+    "description": "brief description of the path ahead and any upcoming turns or changes in direction. Max 15 words."
+  },
+  "maintenance": {
+    "description": "List any maintenance tasks visible: overhanging branches or trees to cut, damaged fences, blocked drainage, overgrown hedges, erosion, broken signs, or other issues a farmer should address. Max 20 words. If none, say 'none'."
+  },
   "summary": "brief overall safety assessment for the tractor"
-}
-
-Severity levels:
-- critical: immediate danger, tractor must stop (e.g. person, child, large animal)
-- warning: obstacle that requires path adjustment (e.g. rock, ditch, fallen tree)
-- info: minor obstacle, tractor can likely handle (e.g. small branch, puddle)"""
+}"""
 
 
 @app.route('/detect-bedrock', methods=['POST'])
