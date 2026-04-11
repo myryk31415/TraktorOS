@@ -3,6 +3,7 @@
 import io
 import base64
 import json
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
@@ -12,6 +13,11 @@ from torchvision.models.detection import fasterrcnn_resnet50_fpn, FasterRCNN_Res
 from torchvision.transforms import functional as F
 import cv2
 import numpy as np
+
+try:
+    from ultralytics import YOLO
+except Exception:
+    YOLO = None
 
 app = Flask(__name__)
 CORS(app)
@@ -48,11 +54,16 @@ coco_core_agri_classes = {
 CONFIDENCE_THRESHOLD = 0.5
 
 print("Loading pretrained Faster R-CNN...")
-model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
-model.eval()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
-print(f"Model loaded on {device}")
+fasterrcnn_model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
+fasterrcnn_model.eval().to(device)
+print(f"Faster R-CNN loaded on {device}")
+
+yolo11x_model = None
+if YOLO is None:
+    print("YOLO11x unavailable (ultralytics not installed)")
+else:
+    print("YOLO11x available for lazy loading")
 
 print("Loading MiDaS depth model...")
 midas = torch.hub.load('intel-isl/MiDaS', 'MiDaS_small')
@@ -60,7 +71,6 @@ midas.eval().to(device)
 midas_transforms = torch.hub.load('intel-isl/MiDaS', 'transforms').small_transform
 print("MiDaS loaded")
 
-import os
 BRISQUE_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'brisque_model_live.yml')
 BRISQUE_RANGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'brisque_range_live.yml')
 try:
@@ -100,22 +110,95 @@ except Exception:
     print("NIMA not available")
 
 
+def get_yolo11x_model():
+    global yolo11x_model
+    if YOLO is None:
+        raise RuntimeError("YOLO11x is not available because ultralytics is not installed")
+    if yolo11x_model is None:
+        print("Loading YOLO11x...")
+        yolo11x_model = YOLO('yolo11x.pt')
+        print("YOLO11x loaded")
+    return yolo11x_model
+
+
+def run_fasterrcnn_detection(image):
+    img_tensor = F.to_tensor(image).unsqueeze(0).to(device)
+    with torch.no_grad():
+        preds = fasterrcnn_model(img_tensor)[0]
+
+    detections = []
+    for i in range(len(preds['boxes'])):
+        label_id = preds['labels'][i].item()
+        confidence = float(preds['scores'][i].item())
+        if label_id not in coco_core_agri_classes or confidence <= CONFIDENCE_THRESHOLD:
+            continue
+
+        box = [int(x) for x in preds['boxes'][i].tolist()]
+        detections.append({
+            'bbox': box,
+            'confidence': confidence,
+            'class': coco_core_agri_classes[label_id]
+        })
+    return detections
+
+
+def run_yolo11x_detection(image):
+    yolo_model = get_yolo11x_model()
+    allowed_classes = set(coco_core_agri_classes.values())
+    yolo_device = 0 if device.type == 'cuda' else 'cpu'
+
+    results = yolo_model.predict(source=np.array(image), verbose=False, device=yolo_device)
+    result = results[0]
+    names = result.names
+
+    detections = []
+    if result.boxes is None:
+        return detections
+
+    xyxy = result.boxes.xyxy.cpu().tolist()
+    confs = result.boxes.conf.cpu().tolist()
+    classes = result.boxes.cls.cpu().tolist()
+
+    for box, confidence, cls_id in zip(xyxy, confs, classes):
+        if confidence <= CONFIDENCE_THRESHOLD:
+            continue
+
+        class_name = str(names[int(cls_id)]).lower()
+        if class_name not in allowed_classes:
+            continue
+
+        detections.append({
+            'bbox': [int(v) for v in box],
+            'confidence': float(confidence),
+            'class': class_name
+        })
+
+    return detections
+
+
 @app.route('/detect', methods=['POST'])
 def detect():
     import time
     t0 = time.time()
 
     data = request.get_json()
+    selected_model = data.get('model', 'fasterrcnn_resnet50_fpn')
     image_data = base64.b64decode(data['image'])
     image = Image.open(io.BytesIO(image_data)).convert('RGB')
     img_w, img_h = image.size
     t_decode = time.time()
 
-    # Run Faster R-CNN
-    img_tensor = F.to_tensor(image).unsqueeze(0).to(device)
-    with torch.no_grad():
-        preds = model(img_tensor)[0]
-    t_rcnn = time.time()
+    # Run selected object detector
+    if selected_model == 'fasterrcnn_resnet50_fpn':
+        raw_detections = run_fasterrcnn_detection(image)
+    elif selected_model == 'yolo11x':
+        raw_detections = run_yolo11x_detection(image)
+    else:
+        return jsonify({
+            'error': f"Unsupported model '{selected_model}'",
+            'supported_models': ['fasterrcnn_resnet50_fpn', 'yolo11x']
+        }), 400
+    t_detector = time.time()
 
     # Run MiDaS depth estimation
     import cv2
@@ -134,31 +217,36 @@ def detect():
     depth_norm = (depth - depth_min) / (depth_max - depth_min + 1e-6)
 
     detections = []
-    for i in range(len(preds['boxes'])):
-        if preds['labels'][i].item() in coco_core_agri_classes and preds['scores'][i].item() > CONFIDENCE_THRESHOLD:
-            box = [int(x) for x in preds['boxes'][i].tolist()]
-            x1, y1, x2, y2 = box
+    for det in raw_detections:
+        box = det['bbox']
+        x1 = max(0, min(img_w - 1, box[0]))
+        y1 = max(0, min(img_h - 1, box[1]))
+        x2 = max(0, min(img_w, box[2]))
+        y2 = max(0, min(img_h, box[3]))
 
-            # Sample depth in lower half of bbox (feet area, more reliable)
-            mid_y = (y1 + y2) // 2
-            region = depth_norm[mid_y:y2, x1:x2]
-            rel_depth = float(region.mean()) if region.size > 0 else 0.0
+        if x2 <= x1 or y2 <= y1:
+            continue
 
-            if rel_depth > 0.4:
-                proximity = 'VERY CLOSE'
-            elif rel_depth > 0.2:
-                proximity = 'NEARBY'
-            else:
-                proximity = 'FAR'
+        # Sample depth in lower half of bbox (feet area, more reliable)
+        mid_y = (y1 + y2) // 2
+        region = depth_norm[mid_y:y2, x1:x2]
+        rel_depth = float(region.mean()) if region.size > 0 else 0.0
 
-            detections.append({
-                'bbox': box,
-                'confidence': float(preds['scores'][i].item()),
-                'class': coco_core_agri_classes[preds['labels'][i].item()],
-                'depth': round(rel_depth, 3),
-                'proximity': proximity
-            })
-            print(f"  [{coco_core_agri_classes[preds['labels'][i].item()]}] conf={preds['scores'][i].item():.2f} rel_depth={rel_depth:.3f} proximity={proximity} bbox={box}")
+        if rel_depth > 0.4:
+            proximity = 'VERY CLOSE'
+        elif rel_depth > 0.2:
+            proximity = 'NEARBY'
+        else:
+            proximity = 'FAR'
+
+        detections.append({
+            'bbox': [x1, y1, x2, y2],
+            'confidence': det['confidence'],
+            'class': det['class'],
+            'depth': round(rel_depth, 3),
+            'proximity': proximity
+        })
+        print(f"  [{det['class']}] conf={det['confidence']:.2f} rel_depth={rel_depth:.3f} proximity={proximity} bbox={[x1, y1, x2, y2]}")
 
     # Encode depth map as base64 PNG for visualization
     depth_colored = cv2.applyColorMap((depth_norm * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
@@ -168,12 +256,13 @@ def detect():
 
     timing = {
         'decode_ms': round((t_decode - t0) * 1000),
-        'rcnn_ms': round((t_rcnn - t_decode) * 1000),
-        'midas_ms': round((t_midas - t_rcnn) * 1000),
+        'detector_ms': round((t_detector - t_decode) * 1000),
+        'rcnn_ms': round((t_detector - t_decode) * 1000),
+        'midas_ms': round((t_midas - t_detector) * 1000),
         'postprocess_ms': round((t_end - t_midas) * 1000),
         'total_ms': round((t_end - t0) * 1000),
     }
-    print(f"[detect] {img_w}x{img_h} | decode={timing['decode_ms']}ms rcnn={timing['rcnn_ms']}ms midas={timing['midas_ms']}ms post={timing['postprocess_ms']}ms total={timing['total_ms']}ms")
+    print(f"[detect] model={selected_model} {img_w}x{img_h} | decode={timing['decode_ms']}ms detector={timing['detector_ms']}ms midas={timing['midas_ms']}ms post={timing['postprocess_ms']}ms total={timing['total_ms']}ms")
 
     return jsonify({
         'detections': detections,
@@ -188,25 +277,23 @@ bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 BEDROCK_PROMPT = """Analyze this image from an autonomous tractor's camera. Respond ONLY with JSON in this exact format, no other text:
 
 {
-  "image_quality": {
-    "issues": ["list of quality issues if any, e.g. too dark (e.g. night), blurry, overexposed, dust, lense flair. If it is good, just return sufficient, if it is obscured, warn that the detection results may be unreliable."]
-    "sufficient": true/false, # if not sufficient, this should be false
-  },
-  "obstacles": [
-    {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk. Max 8 words."}
-  ],
   "ground_assessment": {
     "surface_type": "asphalt/gravel/grass/mud/water/snow/ice/mixed",
     "safety_to_traverse": "safe/caution/unsafe",
     "hazards": ["list of hazards affecting traversability, e.g. waterlogged, muddy, icy, flooded, soft ground, steep slope"]
   },
+  "path_analysis": {
+    "path_type": "trail/road/field/none",
+    "turn_ahead": true/false,
+    "turn_direction": "left/right/none",
+    "turn_distance": "immediate/near/far/none",
+    "description": "brief description of the path ahead and any upcoming turns or changes in direction. Max 15 words."
+  },
+  "maintenance": {
+    "description": "List any maintenance tasks visible: overhanging branches or trees to cut, damaged fences, blocked drainage, overgrown hedges, erosion, broken signs, or other issues a farmer should address. Max 20 words. If none, say 'none'."
+  },
   "summary": "brief overall safety assessment for the tractor"
-}
-
-Severity levels:
-- critical: immediate danger, tractor must stop (e.g. person, child, large animal)
-- warning: obstacle that requires path adjustment (e.g. rock, ditch, fallen tree)
-- info: minor obstacle, tractor can likely handle (e.g. small branch, puddle)"""
+}"""
 
 
 @app.route('/detect-bedrock', methods=['POST'])

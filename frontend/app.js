@@ -1,7 +1,6 @@
 const API = location.protocol === 'file:' ? 'http://localhost:5000' : '';
 const ENDPOINTS = {
     local: `${API}/detect`,
-    sagemaker: 'YOUR_API_GATEWAY_URL',
     bedrock: `${API}/detect-bedrock`,
     quality: `${API}/quality`
 };
@@ -79,11 +78,11 @@ imageInput.addEventListener('change', async (e) => {
 });
 
 uploadBtn.addEventListener('click', async () => {
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-    await runOnDeviceAnalysis(ENDPOINTS[mode], mode);
+    const model = document.querySelector('input[name="model"]:checked').value;
+    await runOnDeviceAnalysis(ENDPOINTS.local, model);
 });
 
-async function runOnDeviceAnalysis(endpoint, mode) {
+async function runOnDeviceAnalysis(endpoint, model) {
     if (!selectedImage || !selectedImageDataUrl) return;
 
     uploadBtn.disabled = true;
@@ -91,7 +90,10 @@ async function runOnDeviceAnalysis(endpoint, mode) {
     setProcessingState(true);
 
     try {
-        const imagePayload = JSON.stringify({ image: selectedImageDataUrl.split(',')[1] });
+        const imagePayload = JSON.stringify({
+            image: selectedImageDataUrl.split(',')[1],
+            model
+        });
 
         // Run detection and quality check in parallel
         const [detectionRes, qualityRes] = await Promise.all([
@@ -151,7 +153,7 @@ async function runOnDeviceAnalysis(endpoint, mode) {
         
     } catch (error) {
         console.error('Detection error:', error);
-        let msg = `Detection failed (${mode} mode):\n\n${error.message}`;
+        let msg = `Detection failed (${model}):\n\n${error.message}`;
         if (error.message === 'Failed to fetch') {
             msg += `\n\nCannot reach server at ${endpoint}. Is the backend running?`;
         }
@@ -188,9 +190,9 @@ async function runAnalysis(endpoint) {
         }
 
         const analysisData = {
-            imageQuality: result.image_quality || {},
             groundAssessment: result.ground_assessment || {},
-            obstacles: Array.isArray(result.obstacles) ? result.obstacles : [],
+            pathAnalysis: result.path_analysis || {},
+            maintenance: result.maintenance || {},
             summary: result.summary || ''
         };
 
@@ -210,39 +212,16 @@ async function runAnalysis(endpoint) {
 }
 
 function buildAnalysisCards(analysisData) {
-    const iconPath = 'icons/image-outline.svg';
-    const quality = analysisData.imageQuality || {};
     const ground = analysisData.groundAssessment || {};
-    const obstacles = Array.isArray(analysisData.obstacles) ? analysisData.obstacles : [];
+    const path = analysisData.pathAnalysis || {};
+    const maint = analysisData.maintenance || {};
     const summaryText = analysisData.summary || '';
-
-    const qualityIssues = Array.isArray(quality.issues) ? quality.issues.filter(Boolean) : [];
-    const qualityDescription = qualityIssues.length
-        ? qualityIssues.join(', ')
-        : quality.sufficient_for_human_detection === true
-            ? 'Image quality is sufficient for object detection.'
-            : 'No image quality details reported.';
 
     const groundHazards = Array.isArray(ground.hazards) ? ground.hazards.filter(Boolean) : [];
     const groundBase = [ground.surface_type, ground.safety_to_traverse].filter(Boolean).join(' / ');
-    const groundDescription = [groundBase, groundHazards.join(', ')].filter(Boolean).join(' - ') || 'No ground assessment reported.';
-
-    const obstacleDescription = obstacles.length
-        ? obstacles.map((item) => {
-            const type = item.type || 'obstacle';
-            const description = item.description || 'No description';
-            return `${type}: ${description}`;
-        }).join(' | ')
-        : 'No obstacles detected.';
+    const groundDescription = [groundBase, groundHazards.join(', ')].filter(Boolean).join(' — ') || 'No ground assessment reported.';
 
     const cards = [
-        {
-            key: 'image-quality',
-            icon: 'icons/image-outline.svg',
-            title: 'Image quality',
-            status: qualityStatus(quality),
-            description: qualityDescription
-        },
         {
             key: 'ground-assessment',
             icon: 'icons/golf-outline.svg',
@@ -250,21 +229,43 @@ function buildAnalysisCards(analysisData) {
             status: traversabilityStatus(ground.safety_to_traverse),
             description: groundDescription
         },
-        {
-            key: 'obstacles',
-            icon: 'icons/cube-outline.svg',
-            title: 'Obstacles',
-            status: obstacleStatus(obstacles),
-            description: obstacleDescription
-        },
-        {
-            key: 'summary',
-            icon: 'icons/book-outline.svg',
-            title: 'Summary',
-            status: 'info',
-            description: summaryText || 'No summary reported.'
-        }
     ];
+
+    if (path.path_type && path.path_type !== 'none') {
+        const pathDesc = path.description || '';
+        const turnInfo = path.turn_ahead
+            ? `Turn ${path.turn_direction || ''} ${path.turn_distance || ''}`.trim()
+            : 'No turn detected';
+        const pathDescription = pathDesc ? `${pathDesc} (${turnInfo})` : turnInfo;
+        const pathStatus = path.turn_ahead
+            ? (path.turn_distance === 'immediate' ? 'danger' : path.turn_distance === 'near' ? 'warning' : 'info')
+            : 'success';
+
+        cards.push({
+            key: 'path-analysis',
+            icon: 'icons/cube-outline.svg',
+            title: 'Path analysis',
+            status: pathStatus,
+            description: pathDescription
+        });
+    }
+
+    const maintDesc = (maint.description || '').toLowerCase();
+    cards.push({
+        key: 'maintenance',
+        icon: maintDesc && maintDesc !== 'none' ? 'icons/alert-outline.svg' : 'icons/checkmark-outline.svg',
+        title: 'Maintenance',
+        status: maintDesc && maintDesc !== 'none' ? 'warning' : 'success',
+        description: maintDesc && maintDesc !== 'none' ? maint.description : 'No maintenance required'
+    });
+
+    cards.push({
+        key: 'summary',
+        icon: 'icons/book-outline.svg',
+        title: 'Summary',
+        status: 'info',
+        description: summaryText || 'No summary reported.'
+    });
 
     return cards.map((card) => {
         return `
@@ -286,26 +287,11 @@ function buildAnalysisCards(analysisData) {
     }).join('');
 }
 
-function qualityStatus(imageQuality) {
-    if (imageQuality.sufficient === true) return 'success';
-    if (imageQuality.sufficient === false) return 'danger';
-    return 'info';
-}
-
 function traversabilityStatus(traversability) {
     const value = String(traversability || '').toLowerCase();
-    if (value === 'good') return 'success';
-    if (value === 'moderate') return 'warning';
-    if (value === 'poor' || value === 'impassable') return 'danger';
-    return 'info';
-}
-
-function obstacleStatus(obstacles) {
-    if (!obstacles.length) return 'success';
-
-    const severities = obstacles.map((item) => String(item.severity || '').toLowerCase());
-    if (severities.includes('critical')) return 'danger';
-    if (severities.includes('warning')) return 'warning';
+    if (value === 'safe') return 'success';
+    if (value === 'caution') return 'warning';
+    if (value === 'unsafe') return 'danger';
     return 'info';
 }
 
@@ -340,9 +326,10 @@ function escapeHtml(value) {
 }
 
 bedrockBtn.addEventListener('click', async () => {
+    const model = document.querySelector('input[name="model"]:checked').value;
     await Promise.all([
         runAnalysis(ENDPOINTS.bedrock),
-        runOnDeviceAnalysis(ENDPOINTS.local, 'local')
+        runOnDeviceAnalysis(ENDPOINTS.local, model)
     ]);
 });
 
