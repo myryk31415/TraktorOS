@@ -1,5 +1,4 @@
-# TraktorOS — Real-Time Safety System for Autonomous Agricultural Machinery
-
+# Traktoros — Hybrid Autonomous Tractor Steering Agent Using Visual Language Action Model
 ## By Team undark
 
 ---
@@ -44,38 +43,13 @@ The UI provides a configurable perspective trapezoid representing the tractor's 
 
 ### 2.4 Action Decision Tree
 
-The core innovation is a deterministic decision tree that combines detection class, depth, and path position into concrete tractor commands:
+The core innovation is a deterministic decision tree that translates detections into concrete tractor commands. The logic is built around two key insights about object behavior:
 
-**Pre-checks:**
-- Image quality insufficient (blurry, poor BRISQUE) → **STOP**
-- No objects detected → **CONTINUE**
+**Stationary objects** (vehicles, fences, rocks, etc.) are predictable — they won't move into our path. We detect whether they are in our corridor. If an obstacle is in the path but still reasonably far away, we attempt to steer around it. If it is directly in front of us with no room to maneuver, we stop. Objects outside the path are ignored.
 
-**Moving objects** (person, dog, horse, sheep, cow, bird):
+**Moving objects** (people, animals) are unpredictable — even if they are currently beside the tractor, they might step into its path at any moment. That's why we honk whenever we are approaching or passing by a person or animal, regardless of whether they are in the corridor. If a moving object is in our path and close enough that a collision is imminent, we stop immediately.
 
-| Proximity | In Path | Action |
-|-----------|---------|--------|
-| Very close | Yes | STOP |
-| Very close | No | HONK |
-| Nearby | Yes | STOP |
-| Nearby | No | HONK |
-| Far | Yes | HONK |
-| Far | No | — |
-
-**Stationary objects** (car, truck, bicycle, motorcycle, etc.):
-
-| Proximity | In Path | Action |
-|-----------|---------|--------|
-| Very close | Yes | STOP |
-| Nearby | Yes, left side | CORRECT RIGHT |
-| Nearby | Yes, right side | CORRECT LEFT |
-| Far | Yes | CONTINUE |
-| Any | No | CONTINUE |
-
-**Multi-object rules:**
-- STOP overrides all other actions
-- HONK can combine with steering corrections
-- Obstacles on both sides → STOP (cannot dodge)
-- CONTINUE only if no other action applies
+Additional rules ensure safe behavior in edge cases: if the image quality is too poor to trust detections, we stop. If obstacles block both sides so we cannot dodge, we stop. 
 
 ### 2.5 Thorough Analysis (Amazon Bedrock)
 
