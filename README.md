@@ -1,6 +1,8 @@
 # TraktorOS - Human Detection System
 
-A demo system for detecting humans in autonomous tractor field of view using PyTorch on AWS SageMaker.
+A demo system for detecting humans in autonomous tractor field of view using PyTorch on AWS.
+
+**Live demo: [http://34.210.69.60](http://34.210.69.60)**
 
 ## Architecture
 
