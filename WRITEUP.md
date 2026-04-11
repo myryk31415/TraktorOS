@@ -9,16 +9,18 @@
 
 ## 1. Overview
 
-#FIXME
-TraktorOS is a multi-layered computer vision pipeline combining on-device object detection, monocular depth estimation, and cloud-based scene analysis to prevent hazardous situations in autonomous farming. Rather than building a single detection model, we process the image in multiple ways to enable selfdriving vehicles to make safe navigation decisions.
+TraktorOS is a safety system for autonomous agricultural machinery that goes beyond detection — it decides what the tractor should do. We combine multiple computer vision techniques into a pipeline that takes a camera image and outputs concrete actions: stop, honk, steer, or continue.
 
-Our system combines three analysis layers:
+The system processes each image through three layers:
 
-1. **Image Quality Assessment** — BRISQUE and classical CV metrics to determine if sensor input is reliable enough for safe operation
-2. **On-Device Analysis** — Faster R-CNN / YOLO11x for object detection + MiDaS for depth estimation, producing instant action recommendations (stop, honk, steer, continue)
-3. **Thorough Analysis** — Amazon Bedrock (Nova Pro) for scene-level understanding: ground conditions, path analysis, vegetation/maintenance detection
+1. **Image Quality Gate** — BRISQUE, NIMA, and classical CV metrics verify the sensor input is reliable. If not, the tractor stops.
+2. **On-Device Analysis** — Object detection (Faster R-CNN / YOLO11x) and monocular depth estimation (MiDaS) identify obstacles, estimate their distance, and determine if they are in the tractor's path. A decision tree translates this into real-time actions.
 
-The entire system is deployed on AWS EC2 with a web-based dashboard, CI/CD via GitHub Actions, and a live demo accessible at [http://34.210.69.60](http://34.210.69.60).
+Both of these run entirely on the tractor's onboard hardware — no internet connection required, enabling split-second decisions in the field.
+
+3. **Thorough Analysis** — When connectivity is available, Amazon Bedrock (Nova Pro) provides deeper scene understanding: ground conditions, upcoming turns, and maintenance issues like overhanging branches that the farmer should address.
+
+The entire system runs on AWS EC2 with automated deployment via GitHub Actions. A live demo is available at [http://34.210.69.60](http://34.210.69.60). The EC2 instance serves as a stand-in for the onboard computer — in production, the same code would run directly on the tractor's hardware.
 
 ---
 
