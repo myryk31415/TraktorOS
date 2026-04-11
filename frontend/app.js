@@ -24,6 +24,7 @@ let selectedImageDataUrl = null;
 let previewObjectUrl = null;
 let lastDetections = [];
 let lastImageData = null;
+let lastQualityData = null;
 
 const tractorWidthSlider = document.getElementById('tractorWidth');
 const tractorWidthLabel = document.getElementById('tractorWidthLabel');
@@ -32,11 +33,11 @@ const horizonLabel = document.getElementById('horizonLineLabel');
 
 tractorWidthSlider.addEventListener('input', () => {
     tractorWidthLabel.textContent = tractorWidthSlider.value + '%';
-    if (lastImageData) displayResults(lastImageData, lastDetections);
+    if (lastImageData) { displayResults(lastImageData, lastDetections); computeActions(lastDetections, lastQualityData); }
 });
 horizonSlider.addEventListener('input', () => {
     horizonLabel.textContent = horizonSlider.value + '%';
-    if (lastImageData) displayResults(lastImageData, lastDetections);
+    if (lastImageData) { displayResults(lastImageData, lastDetections); computeActions(lastDetections, lastQualityData); }
 });
 
 const bedrockBtn = document.getElementById('bedrockBtn');
@@ -115,8 +116,11 @@ async function runOnDeviceAnalysis(endpoint, mode) {
 
         // Show quality banner
         const qualityBanner = document.getElementById('qualityBanner');
+        let qualityData = null;
         if (qualityRes) {
-            const q = await qualityRes.json();
+            qualityData = await qualityRes.json();
+            lastQualityData = qualityData;
+            const q = qualityData;
             qualityBanner.classList.remove('d-none', 'quality-good', 'quality-warn');
             const metricsHtml = formatQualityMetrics(q.metrics || {});
             if (q.sufficient) {
@@ -141,7 +145,7 @@ async function runOnDeviceAnalysis(endpoint, mode) {
         }
 
         displayResults(selectedImageDataUrl, result.detections || []);
-        computeActions(result.detections || []);
+        computeActions(result.detections || [], qualityData);
 
         // Show depth map if available
         const depthContainer = document.getElementById('depthMapContainer');
@@ -575,16 +579,48 @@ function formatQualityMetrics(metrics) {
     `;
 }
 
-const MOVING_CLASSES = new Set(['person', 'bicycle', 'car', 'motorcycle', 'truck', 'dog', 'horse', 'sheep', 'cow', 'bird']);
+const MOVING_CLASSES = new Set(['person', 'dog', 'horse', 'sheep', 'cow', 'bird']);
 
-function computeActions(detections) {
+function computeActions(detections, qualityData) {
     const actionsEmpty = document.getElementById('actionsEmpty');
     const actionsResults = document.getElementById('actionsResults');
     const actionsList = document.getElementById('actionsList');
 
+    // Bad image quality → stop
+    if (qualityData && !qualityData.sufficient) {
+        const html = `
+            <div class="analysis-card">
+                <div class="analysis-card-header">
+                    <div class="analysis-card-title-wrap">
+                        <span class="analysis-card-left-icon" aria-hidden="true"><img src="icons/close-outline.svg" alt="" aria-hidden="true"></span>
+                        <h3 class="analysis-card-title">STOP</h3>
+                    </div>
+                    <span class="analysis-status-icon status-danger" aria-hidden="true"><img src="icons/close-outline.svg" alt="" aria-hidden="true" style="transform: scale(1.3);"></span>
+                </div>
+                <p class="analysis-card-description">Image quality insufficient: ${escapeHtml((qualityData.issues || []).join(', '))}</p>
+            </div>`;
+        actionsList.innerHTML = html;
+        actionsEmpty?.classList.add('d-none');
+        actionsResults?.classList.remove('d-none');
+        return;
+    }
+
+    // No detections → continue
     if (!detections.length) {
-        actionsEmpty?.classList.remove('d-none');
-        actionsResults?.classList.add('d-none');
+        const html = `
+            <div class="analysis-card">
+                <div class="analysis-card-header">
+                    <div class="analysis-card-title-wrap">
+                        <span class="analysis-card-left-icon" aria-hidden="true"><img src="icons/checkmark-outline.svg" alt="" aria-hidden="true"></span>
+                        <h3 class="analysis-card-title">CONTINUE</h3>
+                    </div>
+                    <span class="analysis-status-icon status-success" aria-hidden="true"><img src="icons/checkmark-outline.svg" alt="" aria-hidden="true" style="transform: scale(1.3);"></span>
+                </div>
+                <p class="analysis-card-description">No objects detected — path is clear</p>
+            </div>`;
+        actionsList.innerHTML = html;
+        actionsEmpty?.classList.add('d-none');
+        actionsResults?.classList.remove('d-none');
         return;
     }
 
@@ -603,7 +639,10 @@ function computeActions(detections) {
     let shouldHonk = false;
     let correctLeft = false;
     let correctRight = false;
-    const reasons = [];
+    const stopReasons = [];
+    const honkReasons = [];
+    const correctLeftReasons = [];
+    const correctRightReasons = [];
 
     detections.forEach(det => {
         const cls = (det.class || 'object').toLowerCase();
@@ -613,36 +652,36 @@ function computeActions(detections) {
         const [x1, , x2] = det.bbox;
         const centerX = (x1 + x2) / 2;
         const isLeftSide = centerX < cx;
-        const name = formatDetectionClass(cls);
+        const name = formatDetectionClass(cls).toLowerCase();
 
         if (isMoving) {
             if (prox === 'VERY CLOSE' || prox === 'NEAR') {
                 shouldStop = true;
-                reasons.push(`🛑 Stop — ${name} very close`);
+                stopReasons.push(`${name} very close`);
             } else if (prox === 'NEARBY' || prox === 'MEDIUM') {
+                shouldStop = true;
+                stopReasons.push(`${name} nearby`);
+            } else if (inPath) {
                 shouldHonk = true;
-                reasons.push(`📢 Honk — ${name} nearby`);
+                honkReasons.push(`${name} in path ahead`);
             }
-            // FAR → no action for moving objects
         } else {
             // Stationary object
             if (!inPath) {
-                // Not in path → continue (handled at end)
+                // Not in path → continue
             } else if (prox === 'VERY CLOSE' || prox === 'NEAR') {
                 shouldStop = true;
-                reasons.push(`🛑 Stop — ${name} in path, very close`);
+                stopReasons.push(`${name} in path, very close`);
             } else if (prox === 'NEARBY' || prox === 'MEDIUM') {
                 if (isLeftSide) {
                     correctRight = true;
-                    reasons.push(`➡️ Correct right — ${name} in path (left side)`);
+                    correctRightReasons.push(name);
                 } else {
                     correctLeft = true;
-                    reasons.push(`⬅️ Correct left — ${name} in path (right side)`);
+                    correctLeftReasons.push(name);
                 }
             } else {
-                // FAR + in path
-                shouldStop = true;
-                reasons.push(`🛑 Stop — ${name} in path ahead`);
+                // FAR + in path → continue
             }
         }
     });
@@ -650,21 +689,21 @@ function computeActions(detections) {
     // If corrections in both directions → stop instead
     if (correctLeft && correctRight) {
         shouldStop = true;
-        reasons.push('🛑 Stop — obstacles on both sides, cannot dodge');
+        stopReasons.push('obstacles on both sides, cannot dodge');
     }
 
     const actions = [];
     if (shouldStop) {
-        actions.push({ icon: 'icons/close-outline.svg', title: 'STOP', status: 'danger', description: 'Immediate stop required' });
+        actions.push({ icon: 'icons/close-outline.svg', title: 'STOP', status: 'danger', description: stopReasons.join('; ') });
     }
     if (shouldHonk) {
-        actions.push({ icon: 'icons/alert-outline.svg', title: 'HONK', status: 'warning', description: 'Alert nearby moving object' });
+        actions.push({ icon: 'icons/alert-outline.svg', title: 'HONK', status: 'warning', description: honkReasons.join('; ') });
     }
     if (!shouldStop && correctLeft && !correctRight) {
-        actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT LEFT', status: 'warning', description: 'Steer left to avoid obstacle' });
+        actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT LEFT', status: 'warning', description: `Steer left to avoid ${correctLeftReasons.join(', ')} in path` });
     }
     if (!shouldStop && correctRight && !correctLeft) {
-        actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT RIGHT', status: 'warning', description: 'Steer right to avoid obstacle' });
+        actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT RIGHT', status: 'warning', description: `Steer right to avoid ${correctRightReasons.join(', ')} in path` });
     }
     if (!shouldStop && !shouldHonk && !correctLeft && !correctRight) {
         actions.push({ icon: 'icons/checkmark-outline.svg', title: 'CONTINUE', status: 'success', description: 'Path is clear' });
@@ -683,13 +722,9 @@ function computeActions(detections) {
                     <img src="${a.status === 'danger' ? 'icons/close-outline.svg' : a.status === 'warning' ? 'icons/alert-outline.svg' : 'icons/checkmark-outline.svg'}" alt="" aria-hidden="true" style="transform: scale(1.3);">
                 </span>
             </div>
-            <p class="analysis-card-description">${a.description}</p>
+            <p class="analysis-card-description">${escapeHtml(a.description)}</p>
         </div>
-    `).join('') + `
-        <div class="analysis-card" style="margin-top:0.5rem">
-            <p class="analysis-card-description" style="margin:0;font-size:0.85rem;opacity:0.8">${reasons.length ? reasons.join('<br>') : 'No objects detected in or near path.'}</p>
-        </div>
-    `;
+    `).join('');
 
     actionsList.innerHTML = html;
     actionsEmpty?.classList.add('d-none');
