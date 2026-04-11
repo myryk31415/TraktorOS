@@ -16,7 +16,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 30m
           script: |
-            sudo dnf install -y git python3-pip nginx libxcb
+            sudo dnf install -y git python3-pip nginx libxcb mesa-libGL
             if [ ! -d ~/TraktorOS ]; then
               git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
             fi
