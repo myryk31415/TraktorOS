@@ -7,3 +7,4 @@ uv.lock
 # dataset
 /HackHPI2026_release/
 data/training
+data/
