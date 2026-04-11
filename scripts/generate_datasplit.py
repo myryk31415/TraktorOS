@@ -137,7 +137,7 @@ def _scene_name_to_annotation_file(scene_name: str) -> str:
 
 def build_coco_split_datasets(
     image_root: str | Path = "data/HackHPI2026_release/data",
-    is_local: bool = True,
+    is_local: bool = False,
 ) -> tuple[ConcatDataset, ConcatDataset, ConcatDataset]:
     """Build joined train/val/test datasets from `generate_annotation_split`.
 
