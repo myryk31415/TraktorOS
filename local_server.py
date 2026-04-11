@@ -60,6 +60,45 @@ midas.eval().to(device)
 midas_transforms = torch.hub.load('intel-isl/MiDaS', 'transforms').small_transform
 print("MiDaS loaded")
 
+import os
+BRISQUE_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'brisque_model_live.yml')
+BRISQUE_RANGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'brisque_range_live.yml')
+try:
+    cv2.quality.QualityBRISQUE_compute(np.zeros((10, 10, 3), dtype=np.uint8), BRISQUE_MODEL, BRISQUE_RANGE)
+    HAS_BRISQUE = True
+    print("BRISQUE loaded")
+except Exception:
+    HAS_BRISQUE = False
+    print("BRISQUE not available")
+
+HAS_NIMA = False
+nima_model = None
+nima_transform = None
+try:
+    import torch.nn as nn
+    from torchvision import models as tv_models, transforms as tv_transforms
+
+    class NIMA(nn.Module):
+        def __init__(self):
+            super().__init__()
+            base = tv_models.mobilenet_v2(weights=tv_models.MobileNet_V2_Weights.DEFAULT)
+            base.classifier = nn.Sequential(nn.Dropout(0.75), nn.Linear(1280, 10), nn.Softmax(dim=1))
+            self.base = base
+        def forward(self, x):
+            return self.base(x)
+
+    nima_model = NIMA().eval().to(device)
+    nima_transform = tv_transforms.Compose([
+        tv_transforms.ToPILImage(),
+        tv_transforms.Resize((224, 224)),
+        tv_transforms.ToTensor(),
+        tv_transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    HAS_NIMA = True
+    print("NIMA loaded")
+except Exception:
+    print("NIMA not available")
+
 
 @app.route('/detect', methods=['POST'])
 def detect():
@@ -236,15 +275,38 @@ def quality():
     if w < 320 or h < 240:
         issues.append('Low resolution')
 
+    metrics = {
+        'blur': round(blur, 1),
+        'brightness': round(brightness, 1),
+        'contrast': round(contrast, 1)
+    }
+
+    if HAS_BRISQUE:
+        try:
+            score = cv2.quality.QualityBRISQUE_compute(img, BRISQUE_MODEL, BRISQUE_RANGE)
+            metrics['brisque'] = round(score[0], 1)
+            if score[0] > 60:
+                issues.append('Poor BRISQUE')
+        except Exception:
+            pass
+
+    if HAS_NIMA and nima_model is not None:
+        try:
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            tensor = nima_transform(rgb).unsqueeze(0).to(device)
+            with torch.no_grad():
+                probs = nima_model(tensor).squeeze()
+            score = float((torch.arange(1, 11, dtype=torch.float32).to(device) * probs).sum())
+            metrics['nima'] = round(score, 1)
+            if score < 3.5:
+                issues.append('Low NIMA')
+        except Exception:
+            pass
+
     return jsonify({
         'sufficient': len(issues) == 0,
         'issues': issues,
-        'metrics': {
-            'blur': round(blur, 1),
-            'brightness': round(brightness, 1),
-            'contrast': round(contrast, 1),
-            'resolution': f'{w}x{h}'
-        }
+        'metrics': metrics
     })
 
 

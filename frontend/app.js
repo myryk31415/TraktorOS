@@ -548,11 +548,17 @@ function isDetectionInCorridor(bbox, corridor) {
 }
 
 function formatQualityMetrics(metrics) {
-    const entries = [
-        ['Blur', metrics.blur],
-        ['Brightness', metrics.brightness],
-        ['Contrast', metrics.contrast]
-    ].filter(([, value]) => value !== undefined && value !== null);
+    const m = metrics;
+    const entries = [];
+
+    if (m.blur !== undefined) {
+        const label = m.blur >= 500 ? 'sharp' : m.blur >= 100 ? 'good' : 'blurry';
+        entries.push(['Sharpness', label]);
+    }
+    if (m.brisque !== undefined) {
+        const label = m.brisque < 30 ? 'good' : m.brisque < 60 ? 'fair' : 'poor';
+        entries.push(['Image quality', `${label} (brisque=${m.brisque})`]);
+    }
 
     if (!entries.length) return '';
 
