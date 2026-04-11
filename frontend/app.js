@@ -243,7 +243,7 @@ function buildAnalysisCards(analysisData) {
 
         cards.push({
             key: 'path-analysis',
-            icon: 'icons/cube-outline.svg',
+            icon: 'icons/analytics-outline.svg',
             title: 'Path analysis',
             status: pathStatus,
             description: pathDescription
@@ -253,7 +253,7 @@ function buildAnalysisCards(analysisData) {
     const maintDesc = (maint.description || '').toLowerCase();
     cards.push({
         key: 'maintenance',
-        icon: maintDesc && maintDesc !== 'none' ? 'icons/alert-outline.svg' : 'icons/checkmark-outline.svg',
+        icon: "icons/construct-outline.svg",
         title: 'Maintenance',
         status: maintDesc && maintDesc !== 'none' ? 'warning' : 'success',
         description: maintDesc && maintDesc !== 'none' ? maint.description : 'No maintenance required'
@@ -686,7 +686,7 @@ function computeActions(detections, qualityData) {
         actions.push({ icon: 'icons/close-outline.svg', title: 'STOP', status: 'danger', description: stopReasons.join('; ') });
     }
     if (shouldHonk) {
-        actions.push({ icon: 'icons/alert-outline.svg', title: 'HONK', status: 'warning', description: honkReasons.join('; ') });
+        actions.push({ icon: 'icons/megaphone-outline.svg', title: 'HONK', status: 'warning', description: honkReasons.join('; ') });
     }
     if (!shouldStop && correctLeft && !correctRight) {
         actions.push({ icon: 'icons/cube-outline.svg', title: 'CORRECT LEFT', status: 'warning', description: `Steer left to avoid ${correctLeftReasons.join(', ')} in path` });
