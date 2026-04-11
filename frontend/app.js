@@ -1,8 +1,9 @@
+const SERVER = 'http://34.210.69.60:5000';
 const ENDPOINTS = {
-    local: 'http://localhost:5000/detect',
+    local: `${SERVER}/detect`,
     sagemaker: 'YOUR_API_GATEWAY_URL',
-    bedrock: 'http://localhost:5000/detect-bedrock',
-    quality: 'http://localhost:5000/quality'
+    bedrock: `${SERVER}/detect-bedrock`,
+    quality: `${SERVER}/quality`
 };
 
 const imageInput = document.getElementById('imageInput');
