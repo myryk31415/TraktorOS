@@ -1,10 +1,9 @@
-// const SERVER = 'http://34.210.69.60:5000';
-const SERVER = 'http://localhost:5000';
+const API = location.protocol === 'file:' ? 'http://localhost:5000' : '';
 const ENDPOINTS = {
-    local: `${SERVER}/detect`,
+    local: `${API}/detect`,
     sagemaker: 'YOUR_API_GATEWAY_URL',
-    bedrock: `${SERVER}/detect-bedrock`,
-    quality: `${SERVER}/quality`
+    bedrock: `${API}/detect-bedrock`,
+    quality: `${API}/quality`
 };
 
 const imageInput = document.getElementById('imageInput');

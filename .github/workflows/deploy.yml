@@ -16,7 +16,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 30m
           script: |
-            sudo dnf install -y git python3-pip
+            sudo dnf install -y git python3-pip nginx
             if [ ! -d ~/TraktorOS ]; then
               git clone https://github.com/${{ github.repository }}.git ~/TraktorOS
             fi
@@ -27,6 +27,12 @@ jobs:
             if [ "$OLD_REQ" != "$NEW_REQ" ]; then
               pip3 install -r requirements.txt
             fi
-            pkill -f local_server.py || true
+            sudo cp nginx.conf /etc/nginx/conf.d/traktoros.conf
+            sudo rm -f /etc/nginx/conf.d/default.conf
+            sudo nginx -t && sudo systemctl restart nginx
+            sudo systemctl enable nginx
+            sudo pkill -f local_server.py || true
             sleep 1
-            nohup python3 local_server.py > server.log 2>&1 &
+            sudo setsid nohup python3 ~/TraktorOS/local_server.py > ~/TraktorOS/server.log 2>&1 &
+            sleep 2
+            pgrep -f local_server.py && echo "Server started" || echo "Server failed to start"
