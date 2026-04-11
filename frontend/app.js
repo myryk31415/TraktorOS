@@ -463,12 +463,13 @@ function displayResults(imageData, detections) {
             const width = x2 - x1;
             const height = y2 - y1;
 
-            // Check if detection center is inside the trapezoid
+            // Check if detection bottom-center point is inside the trapezoid
+            // Use bottom point (y2) as it's closest to ground, center X for horizontal position
             const bCenterX = (x1 + x2) / 2;
-            const bCenterY = (y1 + y2) / 2;
+            const bBottomY = y2;
             let inCorridor = false;
-            if (bCenterY > horizonY) {
-                const t = (bCenterY - horizonY) / (img.height - horizonY);
+            if (bBottomY > horizonY) {
+                const t = (bBottomY - horizonY) / (img.height - horizonY);
                 const edgeLeft = cx + (bottomLeft - cx) * t;
                 const edgeRight = cx + (bottomRight - cx) * t;
                 inCorridor = bCenterX > edgeLeft && bCenterX < edgeRight;
