@@ -376,12 +376,26 @@ function setProcessingState(isProcessing) {
     }
 }
 
+const MAX_IMAGE_DIM = 1920;
+
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        const img = new Image();
+        img.onload = () => {
+            let { width, height } = img;
+            if (width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM) {
+                const scale = MAX_IMAGE_DIM / Math.max(width, height);
+                width = Math.round(width * scale);
+                height = Math.round(height * scale);
+            }
+            const c = document.createElement('canvas');
+            c.width = width;
+            c.height = height;
+            c.getContext('2d').drawImage(img, 0, 0, width, height);
+            resolve(c.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
     });
 }
 
