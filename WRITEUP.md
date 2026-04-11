@@ -45,10 +45,9 @@ Initially, we considered YOLO (You Only Look Once), a prominent state-of-the-art
 
 While one-step models are traditionally prized for their speed, our trials yielded surprising results:
 
-As for accuracy, ResNet-50 consistently outperformed various YOLO configurations (including the 'S' and 'XL' variants) in detection precision.
-Furthermore, contrary to the general expectation that two-step architectures are slower, the pre-trained ResNet-50 implementation demonstrated faster inference times in our specific testing environment.
+As for accuracy, ResNet-50 consistently outperformed various YOLO configurations (including the 'S' and 'XL' variants) in detection precision, but YOLO demonstrated faster inferences times due to it's one-step model architecture.  
 
-Based on this superior balance of accuracy and speed, we have selected Faster R-CNN ResNet-50 as our primary model.
+Based on this superiority of accuracy in this safety critical setting we have selected Faster R-CNN ResNet-50 as our primary model.
 Both run locally on the machine with no external API calls, ensuring data stays within the vehicle as required.
 
 ### 2.3 Depth Estimation
