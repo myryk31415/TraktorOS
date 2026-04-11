@@ -203,29 +203,10 @@ def detect_bedrock():
 
     except Exception as e:
         print(f"Bedrock API error: {str(e)}")
-        print("Using mock data for development...")
-        
-        # Development/mock response when AWS credentials fail
-        mock_result = {
-            "image_quality": {
-                "sufficient_for_human_detection": True,
-                "issues": ["sufficient"]
-            },
-            "obstacles": [
-                {
-                    "type": "rock",
-                    "severity": "warning",
-                    "description": "Medium-sized obstacle detected ahead"
-                }
-            ],
-            "ground_assessment": {
-                "surface_type": "grass",
-                "safety_to_traverse": "caution",
-                "hazards": ["uneven terrain", "slight moisture"]
-            },
-            "summary": "Safe to proceed with caution. Uneven terrain detected."
-        }
-        return jsonify(mock_result)
+        return jsonify({
+            "error": "Bedrock analysis failed",
+            "details": str(e)
+        }), 502
 
 
 
