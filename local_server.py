@@ -63,15 +63,20 @@ print("MiDaS loaded")
 
 @app.route('/detect', methods=['POST'])
 def detect():
+    import time
+    t0 = time.time()
+
     data = request.get_json()
     image_data = base64.b64decode(data['image'])
     image = Image.open(io.BytesIO(image_data)).convert('RGB')
     img_w, img_h = image.size
+    t_decode = time.time()
 
     # Run Faster R-CNN
     img_tensor = F.to_tensor(image).unsqueeze(0).to(device)
     with torch.no_grad():
         preds = model(img_tensor)[0]
+    t_rcnn = time.time()
 
     # Run MiDaS depth estimation
     import cv2
@@ -83,6 +88,7 @@ def detect():
     depth = torch.nn.functional.interpolate(
         depth.unsqueeze(1), size=(img_h, img_w), mode='bilinear', align_corners=False
     ).squeeze().cpu().numpy()
+    t_midas = time.time()
 
     # Normalize depth to 0-1 (higher = closer)
     depth_min, depth_max = depth.min(), depth.max()
@@ -118,11 +124,22 @@ def detect():
     depth_colored = cv2.applyColorMap((depth_norm * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
     _, depth_png = cv2.imencode('.png', depth_colored)
     depth_b64 = base64.b64encode(depth_png).decode()
+    t_end = time.time()
+
+    timing = {
+        'decode_ms': round((t_decode - t0) * 1000),
+        'rcnn_ms': round((t_rcnn - t_decode) * 1000),
+        'midas_ms': round((t_midas - t_rcnn) * 1000),
+        'postprocess_ms': round((t_end - t_midas) * 1000),
+        'total_ms': round((t_end - t0) * 1000),
+    }
+    print(f"[detect] {img_w}x{img_h} | decode={timing['decode_ms']}ms rcnn={timing['rcnn_ms']}ms midas={timing['midas_ms']}ms post={timing['postprocess_ms']}ms total={timing['total_ms']}ms")
 
     return jsonify({
         'detections': detections,
         'image_size': {'width': img_w, 'height': img_h},
-        'depth_map': depth_b64
+        'depth_map': depth_b64,
+        'timing': timing
     })
 
 
