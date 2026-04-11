@@ -133,15 +133,15 @@ BEDROCK_PROMPT = """Analyze this image from an autonomous tractor's camera. Resp
 {
   "image_quality": {
     "sufficient_for_human_detection": true/false,
-    "issues": ["list of quality issues if any, e.g. too dark, blurry, overexposed, dust, lense flair. If it is good, just return sufficient"]
+    "issues": ["list of quality issues if any, e.g. too dark (e.g. night), blurry, overexposed, dust, lense flair. If it is good, just return sufficient, if it is obscured, warn that the detection results may be unreliable."]
   },
   "obstacles": [
     {"type": "person/animal/vehicle/rock/tree/fence/ditch/other", "severity": "critical/warning/info", "description": "brief description of the obstacle and risk. Max 8 words."}
   ],
-  "soil_assessment": {
-    "condition": "dry/wet/muddy/frozen/waterlogged",
-    "traversability": "good/moderate/poor/impassable",
-    "concerns": ["list of concerns, e.g. risk of getting stuck, erosion"]
+  "ground_assessment": {
+    "surface_type": "asphalt/gravel/grass/mud/water/snow/ice/mixed",
+    "safety_to_traverse": "safe/caution/unsafe",
+    "hazards": ["list of hazards affecting traversability, e.g. waterlogged, muddy, icy, flooded, soft ground, steep slope"]
   },
   "summary": "brief overall safety assessment for the tractor"
 }

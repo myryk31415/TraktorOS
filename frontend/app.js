@@ -204,7 +204,7 @@ async function runAnalysis(endpoint) {
 
         const analysisData = {
             imageQuality: result.image_quality || {},
-            soilAssessment: result.soil_assessment || {},
+            groundAssessment: result.ground_assessment || {},
             obstacles: Array.isArray(result.obstacles) ? result.obstacles : [],
             summary: result.summary || ''
         };
@@ -227,7 +227,7 @@ async function runAnalysis(endpoint) {
 function buildAnalysisCards(analysisData) {
     const iconPath = 'icons/image-outline.svg';
     const quality = analysisData.imageQuality || {};
-    const soil = analysisData.soilAssessment || {};
+    const ground = analysisData.groundAssessment || {};
     const obstacles = Array.isArray(analysisData.obstacles) ? analysisData.obstacles : [];
     const summaryText = analysisData.summary || '';
 
@@ -238,9 +238,9 @@ function buildAnalysisCards(analysisData) {
             ? 'Image quality is sufficient for object detection.'
             : 'No image quality details reported.';
 
-    const soilConcerns = Array.isArray(soil.concerns) ? soil.concerns.filter(Boolean) : [];
-    const soilBase = [soil.condition, soil.traversability].filter(Boolean).join(' / ');
-    const soilDescription = [soilBase, soilConcerns.join(', ')].filter(Boolean).join(' - ') || 'No soil assessment reported.';
+    const groundHazards = Array.isArray(ground.hazards) ? ground.hazards.filter(Boolean) : [];
+    const groundBase = [ground.surface_type, ground.safety_to_traverse].filter(Boolean).join(' / ');
+    const groundDescription = [groundBase, groundHazards.join(', ')].filter(Boolean).join(' - ') || 'No ground assessment reported.';
 
     const obstacleDescription = obstacles.length
         ? obstacles.map((item) => {
@@ -259,11 +259,11 @@ function buildAnalysisCards(analysisData) {
             description: qualityDescription
         },
         {
-            key: 'soil-assessment',
+            key: 'ground-assessment',
             icon: 'icons/golf-outline.svg',
-            title: 'Soil assessment',
-            status: traversabilityStatus(soil.traversability),
-            description: soilDescription
+            title: 'Ground assessment',
+            status: traversabilityStatus(ground.safety_to_traverse),
+            description: groundDescription
         },
         {
             key: 'obstacles',
