@@ -1,4 +1,4 @@
-# TraktorOS - Human Detection System
+# Traktoros - Human Detection System
 
 A demo system for detecting humans and obstacles in an autonomous tractor's field of view using PyTorch on AWS.
 
@@ -33,7 +33,7 @@ User → Frontend → API Gateway → Lambda → SageMaker Endpoint → Custom P
 ├── local_server.py              # Flask API (detection + depth + Bedrock)
 ├── requirements.txt             # Python dependencies
 ├── nginx.conf                   # nginx: frontend + API proxy
-├── traktoros.service            # systemd service for Flask API
+├── Traktoros.service            # systemd service for Flask API
 ├── frontend/
 │   ├── index.html               # Web interface
 │   ├── app.js                   # Frontend logic
@@ -157,15 +157,15 @@ The workflow pulls latest code, installs deps if changed, updates nginx, and res
 ### Manual EC2 setup
 
 ```bash
-ssh -i ~/.ssh/traktoros-key.pem ec2-user@34.210.69.60
+ssh -i ~/.ssh/Traktoros-key.pem ec2-user@34.210.69.60
 sudo dnf install -y git python3-pip nginx
-git clone https://github.com/myryk31415/TraktorOS.git ~/TraktorOS
-cd ~/TraktorOS
+git clone https://github.com/myryk31415/Traktoros.git ~/Traktoros
+cd ~/Traktoros
 pip3 install -r requirements.txt
-sudo cp nginx.conf /etc/nginx/conf.d/traktoros.conf
-sudo cp traktoros.service /etc/systemd/system/
+sudo cp nginx.conf /etc/nginx/conf.d/Traktoros.conf
+sudo cp Traktoros.service /etc/systemd/system/
 chmod 711 /home/ec2-user
-sudo systemctl enable --now nginx traktoros
+sudo systemctl enable --now nginx Traktoros
 ```
 
 ## License

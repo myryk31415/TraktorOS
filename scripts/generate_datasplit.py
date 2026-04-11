@@ -7,7 +7,7 @@ from torch.utils.data import ConcatDataset
 
 from coco_dataset import CocoDetectionDataset
 
-BUCKET_NAME = "traktoros-training-data"
+BUCKET_NAME = "Traktoros-training-data"
 
 LIGHT = [
     "data/HackHPI2026_release/data/2023-08-09_A550_autonomyTestRecord_Dissen/2023-08-09-17-43-23",

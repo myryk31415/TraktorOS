@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: TraktorOS Human Detection API
+Description: Traktoros Human Detection API
 
 Globals:
   Function:
@@ -18,7 +18,7 @@ Resources:
         - x86_64
       Environment:
         Variables:
-          SAGEMAKER_ENDPOINT: traktoros-human-detection
+          SAGEMAKER_ENDPOINT: Traktoros-human-detection
       Policies:
         - Statement:
           - Effect: Allow

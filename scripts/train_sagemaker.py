@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Configuration
 REGION = 'us-east-1'
-BUCKET_NAME = 'traktoros-training-data'
+BUCKET_NAME = 'Traktoros-training-data'
 ROLE_NAME = 'SageMakerExecutionRole'
 
 def train_model(role_arn, training_data_s3):
@@ -43,7 +43,7 @@ def train_model(role_arn, training_data_s3):
     return estimator.model_data
 
 def main():
-    print("🚜 TraktorOS SageMaker Training")
+    print("🚜 Traktoros SageMaker Training")
     print("=" * 50)
     
     # Initialize clients

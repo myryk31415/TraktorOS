@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚜 TraktorOS Deployment Script"
+echo "🚜 Traktoros Deployment Script"
 echo "================================"
 
 # Check if AWS SAM CLI is installed
