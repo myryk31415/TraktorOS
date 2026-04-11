@@ -26,11 +26,16 @@ The entire system is deployed on AWS EC2 with a web-based dashboard, CI/CD via G
 
 ### 2.1 Detection Pipeline
 
-We use a modular design which enables the models to be switched easily, on the website we provide two example models:
+Detecting humans in digital images is a complex computer vision challenge that requires to utilize both spatial localization and object classification. In machine learning, this problem is generally approached through two distinct architectures: one-step detectors (mapping raw pixels directly to labeled bounding boxes) and two-step detectors (proposing regions of interest before classifying them).
 
-- **Faster R-CNN (ResNet-50 FPN)** pretrained on COCO, filtered to agriculture-relevant classes: persons, vehicles, animals and field obstacles.
-- **YOLO11x** for higher-throughput detection
+Initially, we considered YOLO (You Only Look Once), a prominent state-of-the-art one-step solution. For a rigorous performance comparison, we also evaluated Faster R-CNN with a ResNet-50 backbone, a classic two-step architecture. It is important to note that for this evaluation, we utilized pre-trained models rather than training from scratch, allowing us to leverage features learned from large-scale datasets like COCO.
 
+While one-step models are traditionally prized for their speed, our trials yielded surprising results:
+
+As for accuracy, ResNet-50 consistently outperformed various YOLO configurations (including the 'S' and 'XL' variants) in detection precision.
+Furthermore, contrary to the general expectation that two-step architectures are slower, the pre-trained ResNet-50 implementation demonstrated faster inference times in our specific testing environment.
+
+Based on this superior balance of accuracy and speed, we have selected Faster R-CNN ResNet-50 as our primary model.
 Both run locally on the machine with no external API calls, ensuring data stays within the vehicle as required.
 
 ### 2.2 Depth Estimation
@@ -49,7 +54,7 @@ The core innovation is a deterministic decision tree that translates detections 
 
 **Moving objects** (people, animals) are unpredictable — even if they are currently beside the tractor, they might step into its path at any moment. That's why we honk whenever we are approaching or passing by a person or animal, regardless of whether they are in the corridor. If a moving object is in our path and close enough that a collision is imminent, we stop immediately.
 
-Additional rules ensure safe behavior in edge cases: if the image quality is too poor to trust detections, we stop. If obstacles block both sides so we cannot dodge, we stop. 
+Additional rules ensure safe behavior in edge cases: if the image quality is too poor to trust detections, we stop. If obstacles block both sides so we cannot dodge, we stop.
 
 ### 2.5 Thorough Analysis (Amazon Bedrock)
 
